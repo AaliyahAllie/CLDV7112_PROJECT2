@@ -1,5 +1,5 @@
 @{
-    ViewData["Title"] = "Azure Serverless Functions & Enterprise Cloud Hub";
+    ViewData["Title"] = "Azure Serverless Microservices Monitor & Telemetry Hub";
 }
 
 <div class="container-fluid py-3">
@@ -8,15 +8,15 @@
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
             <div>
                 <h1 class="h3 fw-bold text-gradient mb-1">
-                    <i class="bi bi-cpu-fill me-2"></i>Azure Microservices & Serverless Functions Hub
+                    <i class="bi bi-cpu-fill me-2"></i>Azure Serverless Microservices & Event Monitor
                 </h1>
                 <p class="text-white-50 mb-0 small">
-                    Operational demonstration of Azure Functions, Azure Queue Storage, Azure Blob Storage, Azure Files, Event Hubs, and Service Bus.
+                    Overview of background Azure Functions, Storage Queues, Blobs, Tables, Azure Files, Event Hubs, and Service Bus automatic event triggers.
                 </p>
             </div>
             <div class="d-flex gap-2 align-items-center">
                 <span class="badge bg-success px-3 py-2 text-uppercase">
-                    <i class="bi bi-check-circle-fill me-1"></i>Function App Online
+                    <i class="bi bi-check-circle-fill me-1"></i>Azure Functions Online
                 </span>
                 <span class="badge bg-dark border border-secondary px-3 py-2">
                     <code>func-cldv7112-project2</code>
@@ -25,7 +25,7 @@
         </div>
     </div>
 
-    <!-- Live Execution Response Terminal (Displays results cleanly for screenshots) -->
+    <!-- Live Execution Terminal (Displays results when an event is triggered or simulated) -->
     @if (ViewBag.ResultJson != null)
     {
         <div class="glass-panel p-4 mb-4 border-left-info shadow-lg animate__animated animate__fadeIn">
@@ -33,304 +33,189 @@
                 <h5 class="fw-bold mb-0 text-info">
                     <i class="bi bi-terminal-fill me-2"></i>@ViewBag.ResultTitle
                 </h5>
-                <span class="badge bg-success text-uppercase">HTTP 200 OK — Function Executed</span>
+                <span class="badge bg-success text-uppercase">HTTP 200 OK — Function Executed Successfully</span>
             </div>
-            <p class="text-white-50 small mb-2">Live HTTP response payload returned by the Azure Function worker microservice:</p>
+            <p class="text-white-50 small mb-2">Live HTTP execution log payload returned by the serverless Azure Function app worker:</p>
             <pre class="bg-dark text-success p-3 rounded border border-secondary mb-0" style="max-height: 250px; overflow-y: auto; font-family: 'Fira Code', monospace; font-size: 0.9rem;"><code>@ViewBag.ResultJson</code></pre>
         </div>
     }
 
-    <!-- Function Selector Tabs -->
-    <ul class="nav nav-pills mb-4 gap-2" id="functionTabs" role="tablist">
-        <li class="nav-item" role="presentation">
-            <button class="nav-link active btn-glass btn-sm font-weight-bold" id="tab-table-tab" data-bs-toggle="tab" data-bs-target="#tab-table" type="button" role="tab">
-                <i class="bi bi-person-lines-fill me-1"></i>Customer Profiles (Azure Tables)
-            </button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link btn-glass btn-sm font-weight-bold" id="tab-blob-tab" data-bs-toggle="tab" data-bs-target="#tab-blob" type="button" role="tab">
-                <i class="bi bi-file-earmark-image me-1"></i>Product Catalog Assets (Azure Blobs)
-            </button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link btn-glass btn-sm font-weight-bold" id="tab-queue-tab" data-bs-toggle="tab" data-bs-target="#tab-queue" type="button" role="tab">
-                <i class="bi bi-layers-fill me-1"></i>Order Transactions (Azure Queue)
-            </button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link btn-glass btn-sm font-weight-bold" id="tab-files-tab" data-bs-toggle="tab" data-bs-target="#tab-files" type="button" role="tab">
-                <i class="bi bi-folder-symlink me-1"></i>Vendor Contracts (Azure Files)
-            </button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link btn-glass btn-sm font-weight-bold text-warning" id="tab-messaging-tab" data-bs-toggle="tab" data-bs-target="#tab-messaging" type="button" role="tab">
-                <i class="bi bi-broadcast me-1"></i>Telemetry & Pub/Sub (Event Hubs & Service Bus)
-            </button>
-        </li>
-    </ul>
+    <!-- Event Architecture Summary Banner -->
+    <div class="glass-panel p-4 mb-4 border-left-success">
+        <h5 class="fw-bold text-white mb-2"><i class="bi bi-diagram-3-fill me-2 text-success"></i>How Automatic Azure Function Triggers Work in ABC Retail</h5>
+        <p class="text-white-50 small mb-0">
+            Azure Functions run silently in the background when real events occur in the e-commerce store. You do not manually call them—they trigger automatically when customers sign up, upload product images, or place orders. Below is an interactive monitor showing each microservice event trigger in action:
+        </p>
+    </div>
 
-    <!-- Tab Contents -->
-    <div class="tab-content" id="functionTabsContent">
-        
-        <!-- MODULE 1: AZURE TABLES CUSTOMER REGISTRATION -->
-        <div class="tab-pane fade show active" id="tab-table" role="tabpanel">
-            <div class="row">
-                <div class="col-lg-5 mb-4">
-                    <div class="glass-panel p-4 h-100">
-                        <span class="badge bg-primary mb-2"><i class="bi bi-cpu me-1"></i>Azure Function Microservice</span>
-                        <h4 class="fw-bold text-white mb-2">Customer Profile Registration</h4>
-                        <p class="text-white-50 small">
-                            <strong>Background Operation:</strong> When a customer signs up or updates their profile, the web app offloads database writes to the <code>StoreTableInfo</code> Azure Function. The function processes the request and persists customer record entities directly into <strong>Azure Table Storage</strong>.
-                        </p>
-                        <div class="p-3 bg-dark rounded border border-secondary small text-white-50 mb-3">
-                            <strong class="text-white d-block mb-1"><i class="bi bi-diagram-3 me-1"></i>Architecture Flow:</strong>
-                            <code>Web Frontend Form</code> ➔ <code>HTTP Trigger (/api/StoreTableInfo)</code> ➔ <code>Azure Table (Customers)</code>
-                        </div>
-                        <ul class="small text-white-50 ps-3 mb-0">
-                            <li>Partition Key: <code>Customers</code></li>
-                            <li>Row Key: Auto-generated unique identifier</li>
-                            <li>No server CPU overhead on the primary web application</li>
-                        </ul>
+    <!-- Microservices Monitor Grid -->
+    <div class="row g-4">
+
+        <!-- 1. CUSTOMER SIGNUP EVENT (STORETABLEINFO) -->
+        <div class="col-lg-6">
+            <div class="glass-panel p-4 h-100 border-left-primary">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div>
+                        <span class="badge bg-primary mb-2"><i class="bi bi-table me-1"></i>Azure Table Storage</span>
+                        <h4 class="fw-bold text-white mb-1">1. Customer Signup Event Trigger</h4>
+                        <p class="text-white-50 small mb-0">Function: <code>StoreTableInfo</code> (/api/StoreTableInfo)</p>
                     </div>
+                    <a asp-controller="Home" asp-action="Register" class="btn btn-sm btn-outline-light text-nowrap">
+                        <i class="bi bi-box-arrow-up-right me-1"></i>Open Signup Page
+                    </a>
                 </div>
 
-                <div class="col-lg-7 mb-4">
-                    <div class="glass-panel p-4 h-100 border-left-primary">
-                        <h5 class="fw-bold text-white mb-1"><i class="bi bi-person-plus-fill me-2 text-primary"></i>Customer Profile Form</h5>
-                        <p class="text-white-50 small mb-4">Submit this form to trigger the background Azure Function and store the customer record in Azure Tables.</p>
-                        
-                        <form asp-action="TestStoreTableInfo" method="post">
-                            <input type="hidden" name="tableName" value="Customers" />
-                            <input type="hidden" name="partitionKey" value="Customers" />
+                <div class="p-3 bg-dark rounded border border-secondary small text-white-50 mb-3">
+                    <strong class="text-white d-block mb-1"><i class="bi bi-lightning-charge-fill me-1 text-warning"></i>Automatic Production Trigger:</strong>
+                    When a customer submits the registration form on <code>/Home/Register</code>, the web app automatically invokes <code>StoreTableInfo</code> in the background to save the user entity to Azure Table Storage without delaying the response.
+                </div>
 
-                            <div class="mb-3">
-                                <label class="form-label small text-white-50">Customer Full Name</label>
-                                <input type="text" name="name" class="form-control form-glass" value="Sarah Jenkins" placeholder="e.g. Sarah Jenkins" required />
+                <div class="card bg-dark border-secondary p-3 mb-3">
+                    <h6 class="fw-bold text-white mb-2"><i class="bi bi-play-circle-fill text-primary me-2"></i>Simulate Live Customer Signup Event</h6>
+                    <form asp-action="TestStoreTableInfo" method="post">
+                        <input type="hidden" name="tableName" value="Customers" />
+                        <input type="hidden" name="partitionKey" value="Customers" />
+                        <div class="row g-2 mb-2">
+                            <div class="col-6">
+                                <input type="text" name="name" class="form-control form-control-sm form-glass" value="Sarah Jenkins" readonly />
                             </div>
-                            <div class="mb-4">
-                                <label class="form-label small text-white-50">Email Address</label>
-                                <input type="email" name="email" class="form-control form-glass" value="sarah.jenkins@abcretail.co.za" placeholder="e.g. sarah@example.com" required />
+                            <div class="col-6">
+                                <input type="email" name="email" class="form-control form-control-sm form-glass" value="sarah.jenkins@abcretail.co.za" readonly />
                             </div>
-                            <button type="submit" class="btn btn-rainbow w-100 py-2 fw-bold">
-                                <i class="bi bi-cloud-arrow-up-fill me-1"></i>Save Customer Profile via Azure Function
-                            </button>
-                        </form>
-                    </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-sm w-100 fw-bold">
+                            <i class="bi bi-cpu me-1"></i>Trigger Live Signup Event (`StoreTableInfo`)
+                        </button>
+                    </form>
                 </div>
             </div>
         </div>
 
-        <!-- MODULE 2: BLOB STORAGE ASSET UPLOAD -->
-        <div class="tab-pane fade" id="tab-blob" role="tabpanel">
-            <div class="row">
-                <div class="col-lg-5 mb-4">
-                    <div class="glass-panel p-4 h-100">
-                        <span class="badge bg-success mb-2"><i class="bi bi-cpu me-1"></i>Azure Function Microservice</span>
-                        <h4 class="fw-bold text-white mb-2">Product Asset & Image Upload</h4>
-                        <p class="text-white-50 small">
-                            <strong>Background Operation:</strong> Vendor product images and media files are submitted through this interface and handled by the <code>UploadBlob</code> Azure Function, which uploads file streams into <strong>Azure Blob Storage</strong> and provisions public URLs for web rendering.
-                        </p>
-                        <div class="p-3 bg-dark rounded border border-secondary small text-white-50 mb-3">
-                            <strong class="text-white d-block mb-1"><i class="bi bi-diagram-3 me-1"></i>Architecture Flow:</strong>
-                            <code>Asset Upload Form</code> ➔ <code>HTTP Trigger (/api/UploadBlob)</code> ➔ <code>Azure Blob Container (product-images)</code>
-                        </div>
-                        <ul class="small text-white-50 ps-3 mb-0">
-                            <li>Target Container: <code>product-images</code></li>
-                            <li>Access Level: Anonymous Read enabled for image display</li>
-                            <li>Returns direct storage URI upon successful upload</li>
-                        </ul>
+        <!-- 2. PRODUCT ASSET UPLOAD EVENT (UPLOADBLOB) -->
+        <div class="col-lg-6">
+            <div class="glass-panel p-4 h-100 border-left-success">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div>
+                        <span class="badge bg-success mb-2"><i class="bi bi-file-earmark-image me-1"></i>Azure Blob Storage</span>
+                        <h4 class="fw-bold text-white mb-1">2. Product Image Upload Event Trigger</h4>
+                        <p class="text-white-50 small mb-0">Function: <code>UploadBlob</code> (/api/UploadBlob)</p>
                     </div>
+                    <a asp-controller="Admin" asp-action="AddProduct" class="btn btn-sm btn-outline-light text-nowrap">
+                        <i class="bi bi-box-arrow-up-right me-1"></i>Open Upload Page
+                    </a>
                 </div>
 
-                <div class="col-lg-7 mb-4">
-                    <div class="glass-panel p-4 h-100 border-left-success">
-                        <h5 class="fw-bold text-white mb-1"><i class="bi bi-file-earmark-arrow-up-fill me-2 text-success"></i>Upload Product Media / Metadata</h5>
-                        <p class="text-white-50 small mb-4">Submit media assets or product specs to trigger the Azure Blob upload function.</p>
-                        
-                        <form asp-action="TestUploadBlob" method="post">
-                            <input type="hidden" name="containerName" value="product-images" />
+                <div class="p-3 bg-dark rounded border border-secondary small text-white-50 mb-3">
+                    <strong class="text-white d-block mb-1"><i class="bi bi-lightning-charge-fill me-1 text-warning"></i>Automatic Production Trigger:</strong>
+                    When an Admin uploads a product image on <code>/Admin/AddProduct</code>, the file stream is pushed to the <code>UploadBlob</code> Azure Function, saving it to the <code>product-images</code> Blob container and returning a public URL.
+                </div>
 
-                            <div class="mb-3">
-                                <label class="form-label small text-white-50">File Name / Asset Identifier</label>
-                                <input type="text" name="blobName" class="form-control form-glass" value="wireless_headphones_spec.txt" placeholder="e.g. product_image.png or spec.txt" required />
+                <div class="card bg-dark border-secondary p-3 mb-3">
+                    <h6 class="fw-bold text-white mb-2"><i class="bi bi-play-circle-fill text-success me-2"></i>Simulate Live Product Asset Upload Event</h6>
+                    <form asp-action="TestUploadBlob" method="post">
+                        <input type="hidden" name="containerName" value="product-images" />
+                        <div class="row g-2 mb-2">
+                            <div class="col-6">
+                                <input type="text" name="blobName" class="form-control form-control-sm form-glass" value="headphones_spec.txt" readonly />
                             </div>
-                            <div class="mb-4">
-                                <label class="form-label small text-white-50">File Content / Metadata Description</label>
-                                <textarea name="textContent" class="form-control form-glass" rows="3" placeholder="Enter file payload..." required>ABC Retail Product Media & Specifications payload processed via Azure Function Worker.</textarea>
+                            <div class="col-6">
+                                <input type="text" name="textContent" class="form-control form-control-sm form-glass" value="Wireless Headphones Specification Payload" readonly />
                             </div>
-                            <button type="submit" class="btn btn-success w-100 py-2 fw-bold">
-                                <i class="bi bi-upload me-1"></i>Upload Asset via Azure Function
-                            </button>
-                        </form>
-                    </div>
+                        </div>
+                        <button type="submit" class="btn btn-success btn-sm w-100 fw-bold">
+                            <i class="bi bi-cloud-upload me-1"></i>Trigger Live Asset Upload Event (`UploadBlob`)
+                        </button>
+                    </form>
                 </div>
             </div>
         </div>
 
-        <!-- MODULE 3: QUEUE STORAGE ORDER TRANSACTIONS -->
-        <div class="tab-pane fade" id="tab-queue" role="tabpanel">
-            <div class="row">
-                <div class="col-lg-5 mb-4">
-                    <div class="glass-panel p-4 h-100">
-                        <span class="badge bg-warning text-dark mb-2"><i class="bi bi-cpu me-1"></i>Azure Function Microservice</span>
-                        <h4 class="fw-bold text-white mb-2">Order Checkout & Queue Processing</h4>
-                        <p class="text-white-50 small">
-                            <strong>Background Operation:</strong> During high-volume shopping events, transactions are pushed to an <strong>Azure Storage Queue</strong> via <code>WriteQueueTransaction</code>. A background worker function (<code>ReadQueueTransaction</code>) dequeues and processes orders asynchronously without stalling user checkout experience.
-                        </p>
-                        <div class="p-3 bg-dark rounded border border-secondary small text-white-50 mb-3">
-                            <strong class="text-white d-block mb-1"><i class="bi bi-diagram-3 me-1"></i>Architecture Flow:</strong>
-                            <code>Checkout Form</code> ➔ <code>WriteQueueTransaction</code> ➔ <code>Azure Queue (order-transactions)</code> ➔ <code>ReadQueueTransaction</code>
+        <!-- 3. ORDER CHECKOUT QUEUE & FILE SHARE EVENTS -->
+        <div class="col-lg-6">
+            <div class="glass-panel p-4 h-100 border-left-warning">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div>
+                        <span class="badge bg-warning text-dark mb-2"><i class="bi bi-layers-fill me-1"></i>Queue & Files Storage</span>
+                        <h4 class="fw-bold text-white mb-1">3. Order Checkout & Queue Event Trigger</h4>
+                        <p class="text-white-50 small mb-0">Functions: <code>WriteQueueTransaction</code> & <code>UploadAzureFile</code></p>
+                    </div>
+                    <a asp-controller="Customer" asp-action="Index" class="btn btn-sm btn-outline-light text-nowrap">
+                        <i class="bi bi-box-arrow-up-right me-1"></i>Open Storefront
+                    </a>
+                </div>
+
+                <div class="p-3 bg-dark rounded border border-secondary small text-white-50 mb-3">
+                    <strong class="text-white d-block mb-1"><i class="bi bi-lightning-charge-fill me-1 text-warning"></i>Automatic Production Trigger:</strong>
+                    When a customer checks out on <code>/Customer/Checkout</code>, the order is queued in Azure Storage Queue via <code>WriteQueueTransaction</code> and an invoice manifest is archived to Azure File Share via <code>UploadAzureFile</code>.
+                </div>
+
+                <div class="card bg-dark border-secondary p-3 mb-3">
+                    <h6 class="fw-bold text-white mb-2"><i class="bi bi-play-circle-fill text-warning me-2"></i>Simulate Live Checkout Event</h6>
+                    <form asp-action="TestWriteQueueTransaction" method="post" class="mb-2">
+                        <div class="row g-2 mb-2">
+                            <div class="col-4">
+                                <input type="text" name="customerId" class="form-control form-control-sm form-glass" value="CUST-8812" readonly />
+                            </div>
+                            <div class="col-4">
+                                <input type="text" name="orderId" class="form-control form-control-sm form-glass" value="ORD-99102" readonly />
+                            </div>
+                            <div class="col-4">
+                                <input type="number" step="0.01" name="amount" class="form-control form-control-sm form-glass" value="1299.00" readonly />
+                            </div>
                         </div>
-                        <ul class="small text-white-50 ps-3 mb-0">
-                            <li>Target Queue: <code>order-transactions</code></li>
-                            <li>Guarantees zero order loss during peak server loads</li>
-                        </ul>
+                        <button type="submit" class="btn btn-warning btn-sm w-100 fw-bold text-dark mb-2">
+                            <i class="bi bi-send-fill me-1"></i>Trigger Live Order Checkout Event (`WriteQueueTransaction`)
+                        </button>
+                    </form>
+                    
+                    <form asp-action="TestReadQueueTransaction" method="post">
+                        <button type="submit" class="btn btn-outline-warning btn-sm w-100 fw-bold">
+                            <i class="bi bi-inbox-fill me-1"></i>Process Next Queued Message (`ReadQueueTransaction`)
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. EVENT HUBS & SERVICE BUS MESSAGING -->
+        <div class="col-lg-6">
+            <div class="glass-panel p-4 h-100 border-left-info">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div>
+                        <span class="badge bg-info text-dark mb-2"><i class="bi bi-broadcast me-1"></i>Event Hubs & Service Bus</span>
+                        <h4 class="fw-bold text-white mb-1">4. Real-Time Telemetry & Pub/Sub Messaging</h4>
+                        <p class="text-white-50 small mb-0">Services: <code>Event Hubs Clickstream</code> & <code>Service Bus Topic</code></p>
                     </div>
                 </div>
 
-                <div class="col-lg-7 mb-4">
-                    <div class="glass-panel p-4 h-100 border-left-warning">
-                        <h5 class="fw-bold text-white mb-1"><i class="bi bi-cart-check-fill me-2 text-warning"></i>Submit Order Transaction</h5>
-                        <p class="text-white-50 small mb-3">Place an order to send transaction data to Azure Queue Storage via Azure Functions.</p>
+                <div class="p-3 bg-dark rounded border border-secondary small text-white-50 mb-3">
+                    <strong class="text-white d-block mb-1"><i class="bi bi-lightning-charge-fill me-1 text-warning"></i>Automatic Production Trigger:</strong>
+                    Customer search and product view events stream to Azure Event Hubs automatically. When order status updates occur in <code>/Admin/Index</code>, dispatch messages publish to Azure Service Bus topics.
+                </div>
 
-                        <form asp-action="TestWriteQueueTransaction" method="post" class="mb-4">
-                            <div class="row g-3 mb-3">
-                                <div class="col-md-6">
-                                    <label class="form-label small text-white-50">Customer ID</label>
-                                    <input type="text" name="customerId" class="form-control form-glass" value="CUST-8812" required />
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label small text-white-50">Order Reference</label>
-                                    <input type="text" name="orderId" class="form-control form-glass" value="ORD-99102" required />
-                                </div>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label small text-white-50">Total Amount (ZAR)</label>
-                                <input type="number" step="0.01" name="amount" class="form-control form-glass" value="1299.00" required />
-                            </div>
-                            <button type="submit" class="btn btn-warning w-100 py-2 fw-bold text-dark mb-3">
-                                <i class="bi bi-send-fill me-1"></i>Submit Order to Azure Queue Function
-                            </button>
-                        </form>
-                        
-                        <hr class="border-secondary mb-3" />
-                        
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="fw-bold text-white mb-0">Process Queued Orders</h6>
-                                <p class="text-white-50 small mb-0">Invoke worker function to pop and process the next order in the queue.</p>
-                            </div>
-                            <form asp-action="TestReadQueueTransaction" method="post" class="ms-3">
-                                <button type="submit" class="btn btn-outline-warning btn-sm px-3 py-2 fw-bold">
-                                    <i class="bi bi-inbox-fill me-1"></i>Process Next Queue Message
+                <div class="card bg-dark border-secondary p-3 mb-3">
+                    <h6 class="fw-bold text-white mb-2"><i class="bi bi-play-circle-fill text-info me-2"></i>Simulate Live Messaging Triggers</h6>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <form asp-action="TestEventHubs" method="post">
+                                <input type="hidden" name="userId" value="USER_9901" />
+                                <input type="hidden" name="action" value="ProductSearch" />
+                                <input type="hidden" name="details" value="Searched for 'Headphones'" />
+                                <button type="submit" class="btn btn-outline-info btn-sm w-100 fw-bold">
+                                    <i class="bi bi-broadcast me-1"></i>Stream Event Hubs Clickstream
                                 </button>
                             </form>
                         </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- MODULE 4: AZURE FILES VENDOR CONTRACTS -->
-        <div class="tab-pane fade" id="tab-files" role="tabpanel">
-            <div class="row">
-                <div class="col-lg-5 mb-4">
-                    <div class="glass-panel p-4 h-100">
-                        <span class="badge bg-info text-dark mb-2"><i class="bi bi-cpu me-1"></i>Azure Function Microservice</span>
-                        <h4 class="fw-bold text-white mb-2">Vendor Contract Archiving</h4>
-                        <p class="text-white-50 small">
-                            <strong>Background Operation:</strong> Supplier agreements, delivery manifests, and legal contracts are securely saved to SMB-compatible <strong>Azure File Shares</strong> using the <code>UploadAzureFile</code> Azure Function.
-                        </p>
-                        <div class="p-3 bg-dark rounded border border-secondary small text-white-50 mb-3">
-                            <strong class="text-white d-block mb-1"><i class="bi bi-diagram-3 me-1"></i>Architecture Flow:</strong>
-                            <code>Contract Form</code> ➔ <code>HTTP Trigger (/api/UploadAzureFile)</code> ➔ <code>Azure File Share (contracts)</code>
+                        <div class="col-6">
+                            <form asp-action="TestServiceBus" method="post">
+                                <input type="hidden" name="orderId" value="ORD-7719" />
+                                <input type="hidden" name="customerEmail" value="customer@abcretail.co.za" />
+                                <input type="hidden" name="status" value="OrderDispatched" />
+                                <button type="submit" class="btn btn-danger btn-sm w-100 fw-bold">
+                                    <i class="bi bi-paperplane-fill me-1"></i>Publish Service Bus Message
+                                </button>
+                            </form>
                         </div>
-                        <ul class="small text-white-50 ps-3 mb-0">
-                            <li>Target Share: <code>contracts</code></li>
-                            <li>High availability cloud file share storage</li>
-                        </ul>
-                    </div>
-                </div>
-
-                <div class="col-lg-7 mb-4">
-                    <div class="glass-panel p-4 h-100 border-left-info">
-                        <h5 class="fw-bold text-white mb-1"><i class="bi bi-file-earmark-text-fill me-2 text-info"></i>Archive Supplier Agreement</h5>
-                        <p class="text-white-50 small mb-4">Store vendor agreement text files to Azure Files via serverless function.</p>
-
-                        <form asp-action="TestUploadAzureFile" method="post">
-                            <input type="hidden" name="shareName" value="contracts" />
-
-                            <div class="mb-3">
-                                <label class="form-label small text-white-50">Document File Name</label>
-                                <input type="text" name="fileName" class="form-control form-glass" value="vendor_agreement_2026.txt" required />
-                            </div>
-                            <div class="mb-4">
-                                <label class="form-label small text-white-50">Agreement / Manifest Content</label>
-                                <textarea name="fileContent" class="form-control form-glass" rows="3" required>ABC Retail Vendor Supply & Service Level Agreement 2026.</textarea>
-                            </div>
-                            <button type="submit" class="btn btn-info w-100 py-2 fw-bold text-dark">
-                                <i class="bi bi-folder-check me-1"></i>Save File to Azure File Share
-                            </button>
-                        </form>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- MODULE 5: EVENT HUBS & SERVICE BUS -->
-        <div class="tab-pane fade" id="tab-messaging" role="tabpanel">
-            <div class="row">
-                <div class="col-lg-6 mb-4">
-                    <div class="glass-panel p-4 h-100 border-left-info">
-                        <span class="badge bg-info text-dark mb-2"><i class="bi bi-stream me-1"></i>Real-Time Event Ingestion</span>
-                        <h4 class="fw-bold text-white mb-2">Azure Event Hubs Clickstream</h4>
-                        <p class="text-white-50 small mb-3">
-                            Streams high-throughput user activity events (searches, page views, clicks) into Azure Event Hubs for real-time analytics.
-                        </p>
-                        <form asp-action="TestEventHubs" method="post">
-                            <div class="mb-2">
-                                <label class="form-label small text-white-50">User Identifier</label>
-                                <input type="text" name="userId" class="form-control form-glass form-control-sm" value="USER_9901" required />
-                            </div>
-                            <div class="mb-2">
-                                <label class="form-label small text-white-50">User Action</label>
-                                <input type="text" name="action" class="form-control form-glass form-control-sm" value="ProductSearch" required />
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label small text-white-50">Activity Metadata</label>
-                                <input type="text" name="details" class="form-control form-glass form-control-sm" value="Searched for 'Wireless Headphones' during flash sale" required />
-                            </div>
-                            <button type="submit" class="btn btn-outline-info btn-sm w-100 fw-bold py-2">
-                                <i class="bi bi-broadcast me-1"></i>Stream Telemetry Event
-                            </button>
-                        </form>
-                    </div>
-                </div>
-
-                <div class="col-lg-6 mb-4">
-                    <div class="glass-panel p-4 h-100 border-left-danger">
-                        <span class="badge bg-danger mb-2"><i class="bi bi-envelope-paper me-1"></i>Enterprise Messaging</span>
-                        <h4 class="fw-bold text-white mb-2">Azure Service Bus Notification</h4>
-                        <p class="text-white-50 small mb-3">
-                            Publishes decoupled order status notifications to Azure Service Bus topics for fulfillment and email microservices.
-                        </p>
-                        <form asp-action="TestServiceBus" method="post">
-                            <div class="mb-2">
-                                <label class="form-label small text-white-50">Order Reference</label>
-                                <input type="text" name="orderId" class="form-control form-glass form-control-sm" value="ORD-7719" required />
-                            </div>
-                            <div class="mb-2">
-                                <label class="form-label small text-white-50">Customer Email</label>
-                                <input type="email" name="customerEmail" class="form-control form-glass form-control-sm" value="customer@abcretail.co.za" required />
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label small text-white-50">Fulfillment Status</label>
-                                <input type="text" name="status" class="form-control form-glass form-control-sm" value="OrderConfirmedAndDispatched" required />
-                            </div>
-                            <button type="submit" class="btn btn-danger btn-sm w-100 py-2 fw-bold">
-                                <i class="bi bi-paperplane-fill me-1"></i>Publish Order Notification
-                            </button>
-                        </form>
                     </div>
                 </div>
             </div>
