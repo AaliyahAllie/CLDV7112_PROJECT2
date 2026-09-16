@@ -1,0 +1,24 @@
+## Visual Studio & .NET Build Output
+[Bb]in/
+[Oo]bj/
+.vs/
+*.user
+*.userossc
+*.suo
+*.userprefs
+
+## Sensitive Configuration & Application Settings
+appsettings.json
+appsettings.Development.json
+appsettings*.json
+local.settings.json
+
+## Publishing & Deployment Outputs
+publish/
+*.pubxml
+*.pubxml.user
+
+## OS Files
+Thumbs.db
+Desktop.ini
+.DS_Store

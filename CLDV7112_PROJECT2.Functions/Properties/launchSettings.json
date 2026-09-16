@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "CLDV7112_PROJECT2.Functions": {
+      "commandName": "Project",
+      "commandLineArgs": "--port 7067",
+      "launchBrowser": false
+    }
+  }
+}

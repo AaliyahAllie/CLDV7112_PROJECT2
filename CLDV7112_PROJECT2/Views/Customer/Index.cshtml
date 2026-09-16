@@ -1,0 +1,85 @@
+@model IEnumerable<CLDV7112_PROJECT2.Models.Product>
+@{
+    ViewData["Title"] = "Shop Products";
+}
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger border-0 glass-panel mb-4">?? @TempData["Error"]</div>
+}
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success border-0 glass-panel mb-4">? @TempData["Success"]</div>
+}
+
+<div class="row mb-4 align-items-center">
+    <div class="col">
+        <h1 class="display-6 fw-bold"><span class="text-gradient">??? Shop Products</span></h1>
+        <p class="text-white-50">Browse our catalogue and add items to your cart.</p>
+    </div>
+    <div class="col-auto">
+        <a asp-controller="Cart" asp-action="Index" class="btn btn-glass position-relative">
+            <i class="bi bi-cart3 me-1"></i>View Cart
+        </a>
+    </div>
+</div>
+
+@if (!Model.Any())
+{
+    <div class="glass-panel p-5 text-center">
+        <i class="bi bi-box-seam display-3 text-muted d-block mb-3"></i>
+        <h5 class="fw-semibold text-white">No products available</h5>
+        <p class="text-white-50">The admin hasn't uploaded any products yet. Check back soon!</p>
+    </div>
+}
+else
+{
+    <div class="row g-4">
+        @foreach (var product in Model)
+        {
+            var stock = product.StockQuantity > 0 ? product.StockQuantity : 50;
+
+            <div class="col-md-6 col-lg-4">
+                <div class="glass-panel product-card glass-panel-hover">
+                    <div class="product-img-wrapper">
+                        @if (!string.IsNullOrEmpty(product.ImageUrl))
+                        {
+                            <img src="@product.ImageUrl" alt="@product.Name" class="product-img" />
+                        }
+                        else
+                        {
+                            <div class="d-flex align-items-center justify-content-center h-100 bg-secondary text-white">
+                                <i class="bi bi-box-seam fs-1"></i>
+                            </div>
+                        }
+                        <span class="product-category-badge">@product.Category</span>
+                    </div>
+
+                    <div class="product-info">
+                        <div>
+                            <h4 class="fw-bold mb-1 text-white">@product.Name</h4>
+                            @if (!string.IsNullOrEmpty(product.Description))
+                            {
+                                <p class="text-white-50 small mb-2">@product.Description</p>
+                            }
+                            <h3 class="fw-bold text-price mb-2">R@(product.Price.ToString("F2"))</h3>
+
+                            <span class="badge bg-success mb-2">In Stock (@stock available)</span>
+                        </div>
+
+                        <form asp-controller="Cart" asp-action="AddToCart" method="post" class="mt-2">
+                            <input type="hidden" name="productId" value="@product.RowKey" />
+                            <div class="d-flex gap-2">
+                                <input type="number" name="quantity" value="1" min="1" max="@stock"
+                                       class="form-control form-glass text-center" style="width:70px;" />
+                                <button type="submit" class="btn btn-rainbow flex-grow-1">
+                                    <i class="bi bi-cart-plus-fill me-1"></i>Add to Cart
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}

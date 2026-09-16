@@ -1,0 +1,225 @@
+@{
+    ViewData["Title"] = "Azure Functions & Messaging Dashboard";
+}
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h2 text-primary font-weight-bold mb-1">
+                <i class="fas fa-cloud-bolt text-warning mr-2"></i>Azure Functions & Messaging Dashboard
+            </h1>
+            <p class="text-muted">CLDV7112 Project 2 Microservices & Cloud Integration Hub</p>
+        </div>
+        <div>
+            <span class="badge badge-success px-3 py-2 text-uppercase"><i class="fas fa-check-circle mr-1"></i>Active Azure Project 2</span>
+        </div>
+    </div>
+
+    @if (ViewBag.ResultJson != null)
+    {
+        <div class="alert alert-info alert-dismissible fade show shadow-sm border-left-info mb-4" role="alert">
+            <h5 class="alert-heading font-weight-bold">
+                <i class="fas fa-terminal mr-2"></i>@ViewBag.ResultTitle
+            </h5>
+            <hr />
+            <pre class="bg-dark text-light p-3 rounded" style="max-height: 250px; overflow-y: auto;"><code>@ViewBag.ResultJson</code></pre>
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
+    }
+
+    <div class="row">
+        <!-- Azure Tables Function Card -->
+        <div class="col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100">
+                <div class="card-header bg-primary text-white font-weight-bold">
+                    <i class="fas fa-table mr-2"></i>1. Store Information in Azure Tables
+                </div>
+                <div class="card-body">
+                    <p class="card-text small text-muted">Calls Azure Function <code>StoreTableInfo</code> to upsert entities directly into Azure Table Storage.</p>
+                    <form asp-action="TestStoreTableInfo" method="post">
+                        <div class="form-row">
+                            <div class="form-group col-6">
+                                <label class="small font-weight-bold">Table Name</label>
+                                <input type="text" name="tableName" class="form-control form-control-sm" value="Customers" />
+                            </div>
+                            <div class="form-group col-6">
+                                <label class="small font-weight-bold">Partition Key</label>
+                                <input type="text" name="partitionKey" class="form-control form-control-sm" value="Customers" />
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="small font-weight-bold">Customer / Entity Name</label>
+                            <input type="text" name="name" class="form-control form-control-sm" value="John Doe" />
+                        </div>
+                        <div class="form-group">
+                            <label class="small font-weight-bold">Email Address</label>
+                            <input type="email" name="email" class="form-control form-control-sm" value="johndoe@abcretail.co.za" />
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-sm btn-block">
+                            <i class="fas fa-play mr-1"></i>Invoke StoreTableInfo Function
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Write to Blob Storage Function Card -->
+        <div class="col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100">
+                <div class="card-header bg-success text-white font-weight-bold">
+                    <i class="fas fa-file-image mr-2"></i>2. Write to Blob Storage
+                </div>
+                <div class="card-body">
+                    <p class="card-text small text-muted">Calls Azure Function <code>UploadBlob</code> to upload binary/text blobs directly to Azure Container.</p>
+                    <form asp-action="TestUploadBlob" method="post">
+                        <div class="form-row">
+                            <div class="form-group col-6">
+                                <label class="small font-weight-bold">Container Name</label>
+                                <input type="text" name="containerName" class="form-control form-control-sm" value="product-images" />
+                            </div>
+                            <div class="form-group col-6">
+                                <label class="small font-weight-bold">Blob File Name</label>
+                                <input type="text" name="blobName" class="form-control form-control-sm" value="sample_blob.txt" />
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="small font-weight-bold">Blob Content Text</label>
+                            <textarea name="textContent" class="form-control form-control-sm" rows="3">ABC Retail Blob content uploaded via Azure Function integration.</textarea>
+                        </div>
+                        <button type="submit" class="btn btn-success btn-sm btn-block">
+                            <i class="fas fa-upload mr-1"></i>Invoke UploadBlob Function
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Azure Queue Transaction Function Card -->
+        <div class="col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100">
+                <div class="card-header bg-warning text-dark font-weight-bold">
+                    <i class="fas fa-layer-group mr-2"></i>3. Write / Read Azure Queue Transactions
+                </div>
+                <div class="card-body">
+                    <p class="card-text small text-muted">Calls Azure Functions <code>WriteQueueTransaction</code> and <code>ReadQueueTransaction</code> for order transactions.</p>
+                    <form asp-action="TestWriteQueueTransaction" method="post" class="mb-3">
+                        <div class="form-row">
+                            <div class="form-group col-6">
+                                <label class="small font-weight-bold">Customer ID</label>
+                                <input type="text" name="customerId" class="form-control form-control-sm" value="CUST-901" />
+                            </div>
+                            <div class="form-group col-6">
+                                <label class="small font-weight-bold">Order ID</label>
+                                <input type="text" name="orderId" class="form-control form-control-sm" value="ORD-7721" />
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="small font-weight-bold">Transaction Amount (ZAR)</label>
+                            <input type="number" step="0.01" name="amount" class="form-control form-control-sm" value="899.50" />
+                        </div>
+                        <button type="submit" class="btn btn-warning btn-sm btn-block font-weight-bold">
+                            <i class="fas fa-paper-plane mr-1"></i>Write Transaction to Azure Queue
+                        </button>
+                    </form>
+                    <hr />
+                    <form asp-action="TestReadQueueTransaction" method="post">
+                        <button type="submit" class="btn btn-outline-warning btn-sm btn-block font-weight-bold text-dark">
+                            <i class="fas fa-inbox mr-1"></i>Read Messages from Azure Queue
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Azure Files Function Card -->
+        <div class="col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100">
+                <div class="card-header bg-info text-white font-weight-bold">
+                    <i class="fas fa-folder-open mr-2"></i>4. Write to Azure Files (File Share)
+                </div>
+                <div class="card-body">
+                    <p class="card-text small text-muted">Calls Azure Function <code>UploadAzureFile</code> to write contract/audit files to Azure File Share.</p>
+                    <form asp-action="TestUploadAzureFile" method="post">
+                        <div class="form-row">
+                            <div class="form-group col-6">
+                                <label class="small font-weight-bold">File Share Name</label>
+                                <input type="text" name="shareName" class="form-control form-control-sm" value="contracts" />
+                            </div>
+                            <div class="form-group col-6">
+                                <label class="small font-weight-bold">File Name</label>
+                                <input type="text" name="fileName" class="form-control form-control-sm" value="supplier_contract_2026.txt" />
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="small font-weight-bold">File Document Body</label>
+                            <textarea name="fileContent" class="form-control form-control-sm" rows="3">ABC Retail Vendor Agreement & Operational Logistics Document.</textarea>
+                        </div>
+                        <button type="submit" class="btn btn-info btn-sm btn-block">
+                            <i class="fas fa-file-contract mr-1"></i>Invoke UploadAzureFile Function
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Azure Event Hubs Card -->
+        <div class="col-md-6 mb-4">
+            <div class="card border-left-secondary shadow h-100">
+                <div class="card-header bg-dark text-white font-weight-bold">
+                    <i class="fas fa-stream mr-2"></i>Azure Event Hubs (Telemetry Stream)
+                </div>
+                <div class="card-body">
+                    <p class="card-text small text-muted">Simulate high-throughput real-time clickstream events for customer data analytics.</p>
+                    <form asp-action="TestEventHubs" method="post">
+                        <div class="form-group">
+                            <label class="small font-weight-bold">User Identifier</label>
+                            <input type="text" name="userId" class="form-control form-control-sm" value="USER_88192" />
+                        </div>
+                        <div class="form-group">
+                            <label class="small font-weight-bold">Event Action</label>
+                            <input type="text" name="action" class="form-control form-control-sm" value="ProductSearch" />
+                        </div>
+                        <div class="form-group">
+                            <label class="small font-weight-bold">Telemetry Details</label>
+                            <input type="text" name="details" class="form-control form-control-sm" value="Searched for 'Laptop Backpacks' during peak season sale" />
+                        </div>
+                        <button type="submit" class="btn btn-dark btn-sm btn-block">
+                            <i class="fas fa-satellite-dish mr-1"></i>Stream Event to Event Hubs
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Azure Service Bus Card -->
+        <div class="col-md-6 mb-4">
+            <div class="card border-left-danger shadow h-100">
+                <div class="card-header bg-danger text-white font-weight-bold">
+                    <i class="fas fa-envelope-open-text mr-2"></i>Azure Service Bus (Enterprise Pub/Sub)
+                </div>
+                <div class="card-body">
+                    <p class="card-text small text-muted">Publish enterprise pub/sub notifications for reliable order fulfillment workflows.</p>
+                    <form asp-action="TestServiceBus" method="post">
+                        <div class="form-group">
+                            <label class="small font-weight-bold">Order ID</label>
+                            <input type="text" name="orderId" class="form-control form-control-sm" value="ORD-9912" />
+                        </div>
+                        <div class="form-group">
+                            <label class="small font-weight-bold">Customer Email</label>
+                            <input type="email" name="customerEmail" class="form-control form-control-sm" value="client@abcretail.co.za" />
+                        </div>
+                        <div class="form-group">
+                            <label class="small font-weight-bold">Order Status</label>
+                            <input type="text" name="status" class="form-control form-control-sm" value="OrderPlacedAndDispatched" />
+                        </div>
+                        <button type="submit" class="btn btn-danger btn-sm btn-block">
+                            <i class="fas fa-paper-plane mr-1"></i>Publish to Service Bus Topic
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
