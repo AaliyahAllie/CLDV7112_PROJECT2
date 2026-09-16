@@ -371,3 +371,27 @@ h1, h2, h3, h4, h5, h6 {
 .text-price {
     color: var(--secondary-color) !important;
 }
+
+/* Dedicated Mobile & Device Breakpoints */
+@media (max-width: 768px) {
+    body {
+        padding-top: 6.5rem !important;
+    }
+    .navbar-glass {
+        padding: 0.6rem 1rem !important;
+    }
+    .hero-section {
+        padding: 4rem 0 2rem 0 !important;
+    }
+    .hero-subtitle {
+        font-size: 1rem !important;
+    }
+    .glass-panel {
+        padding: 1.25rem !important;
+        border-radius: 12px !important;
+    }
+    .table-responsive {
+        font-size: 0.85rem;
+    }
+}
+
