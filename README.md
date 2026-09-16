@@ -178,9 +178,9 @@ Create `CLDV7112_PROJECT2.Functions/local.settings.json`:
 
 ## 🌐 Live Azure Cloud Deployment Links
 
-- **Web Application URL:** `https://cldv7112-project2-st10212542.azurewebsites.net`
-- **Azure Functions Base Endpoint:** `https://func-cldv7112-project2-dcahhwfxaqh0ejgj.southafricanorth-01.azurewebsites.net/api`
-- **Functions Dashboard:** `https://cldv7112-project2-st10212542.azurewebsites.net/Functions`
+- **Web Application URL:** `https://st10212542-cldv7112-2-csbufnbafqffccdb.southafricanorth-01.azurewebsites.net//`
+- **Azure Functions Base Endpoint:** `https://func-cldv7112-project2-dcahhwfxaqh0ejgj.southafricanorth-01.azurewebsites.net/`
+
 
 ---
 
