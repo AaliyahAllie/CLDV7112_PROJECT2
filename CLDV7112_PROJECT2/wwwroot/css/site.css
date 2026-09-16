@@ -81,11 +81,11 @@ body {
 .nav-link-custom {
     color: var(--text-muted) !important;
     font-weight: 500;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     transition: all 0.2s ease;
     border-radius: 8px;
-    padding: 0.4rem 0.6rem !important;
-    margin: 0 0.1rem;
+    padding: 0.35rem 0.45rem !important;
+    margin: 0 0.05rem;
     white-space: nowrap !important;
 }
 
