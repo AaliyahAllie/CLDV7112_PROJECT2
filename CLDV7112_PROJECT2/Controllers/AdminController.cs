@@ -3,6 +3,7 @@ using CLDV7112_PROJECT2.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 
@@ -102,12 +103,10 @@ namespace CLDV7112_PROJECT2.Controllers
                 byte[] bytes = ms.ToArray();
                 string base64 = Convert.ToBase64String(bytes);
 
-                // Primary upload via Azure Function
                 product.ImageUrl = await _blobStorageService.UploadBlobAsync(product.RowKey, imageFile.OpenReadStream());
                 _ = _functionsService.UploadBlobAsync("product-images", $"{product.RowKey}.jpg", base64, imageFile.ContentType);
             }
 
-            // Save Product via Azure Function 1 (Table Function + Fallback)
             await _tableStorageService.UpsertProductAsync(product);
             _ = _functionsService.StoreTableInfoAsync(product);
 
@@ -183,7 +182,6 @@ namespace CLDV7112_PROJECT2.Controllers
             await _tableStorageService.UpdateOrderStatusAsync(customerId, orderId, newStatus);
             await _fileShareService.AppendOrderLogAsync("INFO", $"Order status updated. OrderId: {orderId}, CustomerId: {customerId}, New Status: {newStatus}");
             
-            // Publish status update to Azure Service Bus
             _ = _functionsService.SendServiceBusMessageAsync(new
             {
                 OrderId = orderId,
@@ -216,16 +214,40 @@ namespace CLDV7112_PROJECT2.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> Logs()
+        public async Task<IActionResult> Logs(string file = "system-logs.txt")
         {
             if (!IsAdmin()) return RedirectToAction("Login", "Home");
 
-            ViewBag.SystemLogs = await _fileShareService.ReadLogFileAsync("system-activity.log");
-            ViewBag.CustomerLogs = await _fileShareService.ReadLogFileAsync("customer-events.log");
-            ViewBag.OrderLogs = await _fileShareService.ReadLogFileAsync("order-processing.log");
-            ViewBag.ErrorLogs = await _fileShareService.ReadLogFileAsync("error-log.log");
+            ViewBag.LogFileNames = FileShareService.LogFileNames;
+            ViewBag.ActiveFile = file;
 
-            return View();
+            List<LogEntry> logs;
+            try
+            {
+                logs = await _fileShareService.ReadLogFileAsync(file);
+            }
+            catch
+            {
+                logs = new List<LogEntry>();
+            }
+
+            return View(logs);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> ClearLogs(string file = "system-logs.txt")
+        {
+            if (!IsAdmin()) return RedirectToAction("Login", "Home");
+            try
+            {
+                await _fileShareService.ClearLogFileAsync(file);
+                TempData["Success"] = $"Log file '{file}' cleared.";
+            }
+            catch (Exception ex)
+            {
+                TempData["Error"] = $"Error clearing log file: {ex.Message}";
+            }
+            return RedirectToAction("Logs", new { file });
         }
     }
 }
