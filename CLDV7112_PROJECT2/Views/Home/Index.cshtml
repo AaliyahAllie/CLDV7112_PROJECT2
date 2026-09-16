@@ -3,6 +3,17 @@
 @{
     ViewData["Title"] = "ABC Retail - Cloud Enabled E-Commerce";
     var userRole = HttpContextAccessor.HttpContext?.Session.GetString("UserRole");
+
+    var categoryGroups = Model.GroupBy(p => string.IsNullOrWhiteSpace(p.Category) ? "General Products" : p.Category);
+
+    Func<string, string> getCategoryIcon = cat => cat.ToLowerInvariant() switch
+    {
+        var c when c.Contains("tech") || c.Contains("electron") || c.Contains("gadget") => "bi-laptop-fill text-info",
+        var c when c.Contains("home") || c.Contains("kitchen") || c.Contains("appliance") => "bi-house-heart-fill text-warning",
+        var c when c.Contains("fashion") || c.Contains("wear") || c.Contains("bag") || c.Contains("travel") => "bi-bag-check-fill text-danger",
+        var c when c.Contains("lifestyle") || c.Contains("accessory") => "bi-watch text-primary",
+        _ => "bi-tag-fill text-success"
+    };
 }
 
 <!-- Hero Section -->
@@ -91,11 +102,11 @@
     </div>
 </div>
 
-<!-- Product Catalog Section (BROWSE PRODUCTS) -->
+<!-- Product Catalog Section (BROWSE PRODUCTS BY CATEGORY) -->
 <div id="products-section" class="row mt-5 pt-4 g-4 justify-content-center">
     <div class="col-md-12 text-center mb-3">
         <h3 class="fw-bold"><i class="bi bi-bag-heart-fill text-gradient me-2"></i>Browse Our Live Catalog</h3>
-        <p class="text-white-50">Explore our active inventory served directly from Azure Storage.</p>
+        <p class="text-white-50">Explore our active inventory grouped by category, served directly from Azure Storage.</p>
     </div>
 
     @if (!Model.Any())
@@ -112,48 +123,65 @@
     }
     else
     {
-        @foreach (var product in Model)
+        @foreach (var group in categoryGroups)
         {
-            <div class="col-md-6 col-lg-4">
-                <div class="glass-panel product-card glass-panel-hover">
-                    <div class="product-img-wrapper">
-                        @if (!string.IsNullOrEmpty(product.ImageUrl))
-                        {
-                            <img src="@product.ImageUrl" alt="@product.Name" class="product-img" />
-                        }
-                        else
-                        {
-                            <div class="d-flex align-items-center justify-content-center h-100 bg-secondary text-white">
-                                <i class="bi bi-box-seam fs-1"></i>
-                            </div>
-                        }
-                        <span class="product-category-badge">@product.Category</span>
-                    </div>
-                    <div class="product-info">
-                        <div>
-                            <h4 class="fw-bold mb-1 text-white">@product.Name</h4>
-                            <h3 class="fw-bold text-price mb-3">R@(product.Price.ToString("F2"))</h3>
-                        </div>
+            var iconClass = getCategoryIcon(group.Key);
 
-                        @if (string.IsNullOrEmpty(userRole))
-                        {
-                            <a asp-controller="Home" asp-action="Login" class="btn btn-rainbow w-100 mt-2">
-                                <i class="bi bi-box-arrow-in-right me-2"></i>Sign In to Buy
-                            </a>
-                        }
-                        else if (userRole == "Customer")
-                        {
-                            <a asp-controller="Customer" asp-action="Index" class="btn btn-rainbow w-100 mt-2">
-                                <i class="bi bi-cart-plus-fill me-2"></i>Go to Shop & Buy
-                            </a>
-                        }
-                        else
-                        {
-                            <button class="btn btn-glass w-100 mt-2" disabled>
-                                <i class="bi bi-shield-fill-exclamation me-2"></i>Admin Mode
-                            </button>
-                        }
-                    </div>
+            <div class="col-12 mb-4">
+                <div class="d-flex align-items-center gap-2 mb-3 pb-2 border-bottom border-secondary">
+                    <i class="bi @iconClass fs-4"></i>
+                    <h4 class="h5 fw-bold text-white mb-0">@group.Key</h4>
+                    <span class="badge bg-dark border border-secondary text-white-50 ms-2 px-2 py-1 small">
+                        @group.Count() items
+                    </span>
+                </div>
+
+                <div class="row g-4">
+                    @foreach (var product in group)
+                    {
+                        <div class="col-md-6 col-lg-4">
+                            <div class="glass-panel product-card glass-panel-hover h-100 d-flex flex-column">
+                                <div class="product-img-wrapper position-relative">
+                                    @if (!string.IsNullOrEmpty(product.ImageUrl))
+                                    {
+                                        <img src="@product.ImageUrl" alt="@product.Name" class="product-img" />
+                                    }
+                                    else
+                                    {
+                                        <div class="d-flex align-items-center justify-content-center h-100 bg-secondary text-white">
+                                            <i class="bi bi-box-seam fs-1"></i>
+                                        </div>
+                                    }
+                                    <span class="product-category-badge">@group.Key</span>
+                                </div>
+                                <div class="product-info p-3 d-flex flex-column flex-grow-1 justify-content-between">
+                                    <div>
+                                        <h5 class="fw-bold mb-1 text-white">@product.Name</h5>
+                                        <h4 class="fw-bold text-price mb-3">R@(product.Price.ToString("N2"))</h4>
+                                    </div>
+
+                                    @if (string.IsNullOrEmpty(userRole))
+                                    {
+                                        <a asp-controller="Home" asp-action="Login" class="btn btn-rainbow w-100 mt-2">
+                                            <i class="bi bi-box-arrow-in-right me-2"></i>Sign In to Buy
+                                        </a>
+                                    }
+                                    else if (userRole == "Customer")
+                                    {
+                                        <a asp-controller="Customer" asp-action="Index" class="btn btn-rainbow w-100 mt-2">
+                                            <i class="bi bi-cart-plus-fill me-2"></i>Go to Shop & Buy
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <button class="btn btn-glass w-100 mt-2" disabled>
+                                            <i class="bi bi-shield-fill-exclamation me-2"></i>Admin Mode
+                                        </button>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    }
                 </div>
             </div>
         }
