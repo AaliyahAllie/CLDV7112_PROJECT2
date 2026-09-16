@@ -7,6 +7,7 @@ using Microsoft.Extensions.Configuration;
 
 namespace CLDV7112_PROJECT2.Services
 {
+    // Service that connects the ASP.NET Core web application to Azure Functions HTTP endpoints with fallback handling
     public class FunctionsService
     {
         private readonly HttpClient _httpClient;
@@ -16,6 +17,7 @@ namespace CLDV7112_PROJECT2.Services
         private readonly QueueStorageService _queueStorageService;
         private readonly FileShareService _fileShareService;
 
+        // Initializes HTTP client and injected Azure storage services
         public FunctionsService(
             IConfiguration configuration,
             BlobStorageService blobStorageService,
@@ -31,6 +33,7 @@ namespace CLDV7112_PROJECT2.Services
             _fileShareService = fileShareService;
         }
 
+        // Triggers Azure Function: StoreTableInfo (or falls back to direct Table Storage upsert)
         public async Task<string> StoreTableInfoAsync(object data)
         {
             _ = _fileShareService.AppendSystemLogAsync("INFO", "⚡ Azure Function Executed: StoreTableInfo | Customer/entity profile persisted to Azure Table Storage.");

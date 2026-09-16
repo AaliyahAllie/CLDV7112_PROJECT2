@@ -1,4 +1,9 @@
-﻿@model IEnumerable<CLDV7112_PROJECT2.Models.CartItem>
+@* 
+    Customer Checkout Page:
+    Displays shopping cart items summary, collects customer billing details, 
+    and handles secure payment checkout via Stripe or Azure Queue transaction processing.
+*@
+@model IEnumerable<CLDV7112_PROJECT2.Models.CartItem>
 @{
     ViewData["Title"] = "Checkout - ABC Retail";
     decimal total = ViewBag.TotalAmount != null ? Convert.ToDecimal(ViewBag.TotalAmount) : Convert.ToDecimal(Model.Sum(x => x.LineTotal));
