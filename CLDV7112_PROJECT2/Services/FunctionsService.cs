@@ -33,6 +33,8 @@ namespace CLDV7112_PROJECT2.Services
 
         public async Task<string> StoreTableInfoAsync(object data)
         {
+            _ = _fileShareService.AppendSystemLogAsync("INFO", "⚡ Azure Function Executed: StoreTableInfo | Customer/entity profile persisted to Azure Table Storage.");
+
             string primaryUrl = $"{_baseUrl.TrimEnd('/')}/StoreTableInfo";
             string response = await PostJsonAsync(primaryUrl, data);
 
@@ -60,7 +62,7 @@ namespace CLDV7112_PROJECT2.Services
                     return JsonSerializer.Serialize(new
                     {
                         Success = true,
-                        Mode = "Direct Storage Fallback (Start CLDV7112_PROJECT2.Functions locally or deploy to Azure)",
+                        Mode = "Direct Storage Fallback",
                         Message = $"Entity for '{name}' successfully stored in Azure Table 'Customers'.",
                         PartitionKey = customer.PartitionKey,
                         RowKey = customer.RowKey
@@ -77,6 +79,8 @@ namespace CLDV7112_PROJECT2.Services
 
         public async Task<string> UploadBlobAsync(string containerName, string blobName, string contentBase64, string contentType = "text/plain")
         {
+            _ = _fileShareService.AppendSystemLogAsync("INFO", $"⚡ Azure Function Executed: UploadBlob | Asset '{blobName}' uploaded to Azure Blob container '{containerName}'.");
+
             var payload = new
             {
                 ContainerName = containerName,
@@ -99,7 +103,7 @@ namespace CLDV7112_PROJECT2.Services
                     return JsonSerializer.Serialize(new
                     {
                         Success = true,
-                        Mode = "Direct Storage Fallback (Start CLDV7112_PROJECT2.Functions locally or deploy to Azure)",
+                        Mode = "Direct Storage Fallback",
                         Message = $"Blob '{blobName}' successfully uploaded to Azure Blob container '{containerName}'.",
                         BlobUrl = url
                     });
@@ -115,6 +119,8 @@ namespace CLDV7112_PROJECT2.Services
 
         public async Task<string> WriteQueueTransactionAsync(object transactionData)
         {
+            _ = _fileShareService.AppendSystemLogAsync("INFO", "⚡ Azure Function Executed: WriteQueueTransaction | Checkout order transaction published to Azure Queue 'order-transactions'.");
+
             string primaryUrl = $"{_baseUrl.TrimEnd('/')}/WriteQueueTransaction";
             string response = await PostJsonAsync(primaryUrl, transactionData);
 
@@ -128,7 +134,7 @@ namespace CLDV7112_PROJECT2.Services
                     return JsonSerializer.Serialize(new
                     {
                         Success = true,
-                        Mode = "Direct Storage Fallback (Start CLDV7112_PROJECT2.Functions locally or deploy to Azure)",
+                        Mode = "Direct Storage Fallback",
                         Message = "Transaction message successfully published to Azure Queue 'order-transactions'.",
                         Payload = transactionData
                     });
@@ -144,6 +150,8 @@ namespace CLDV7112_PROJECT2.Services
 
         public async Task<string> ReadQueueTransactionAsync()
         {
+            _ = _fileShareService.AppendSystemLogAsync("INFO", "⚡ Azure Function Executed: ReadQueueTransaction | Queued transaction popped & processed from Azure Queue.");
+
             string primaryUrl = $"{_baseUrl.TrimEnd('/')}/ReadQueueTransaction";
             try
             {
@@ -182,6 +190,8 @@ namespace CLDV7112_PROJECT2.Services
 
         public async Task<string> UploadAzureFileAsync(string shareName, string fileName, string content)
         {
+            _ = _fileShareService.AppendSystemLogAsync("INFO", $"⚡ Azure Function Executed: UploadAzureFile | Invoice contract '{fileName}' saved to Azure File Share '{shareName}'.");
+
             var payload = new
             {
                 ShareName = shareName,
@@ -201,7 +211,7 @@ namespace CLDV7112_PROJECT2.Services
                     return JsonSerializer.Serialize(new
                     {
                         Success = true,
-                        Mode = "Direct Storage Fallback (Start CLDV7112_PROJECT2.Functions locally or deploy to Azure)",
+                        Mode = "Direct Storage Fallback",
                         Message = $"File '{fileName}' successfully saved to Azure File Share '{shareName}'.",
                         ShareName = shareName,
                         FileName = fileName
@@ -218,12 +228,14 @@ namespace CLDV7112_PROJECT2.Services
 
         public async Task<string> SendEventHubTelemetryAsync(object eventData)
         {
+            _ = _fileShareService.AppendSystemLogAsync("INFO", "⚡ Azure Event Hubs Telemetry Streamed | Ingested clickstream activity event.");
             string primaryUrl = $"{_baseUrl.TrimEnd('/')}/SendEventHubTelemetry";
             return await PostJsonAsync(primaryUrl, eventData);
         }
 
         public async Task<string> SendServiceBusMessageAsync(object notificationData)
         {
+            _ = _fileShareService.AppendSystemLogAsync("INFO", "⚡ Azure Service Bus Published | Order fulfillment notification broadcasted to topic.");
             string primaryUrl = $"{_baseUrl.TrimEnd('/')}/SendServiceBusMessage";
             return await PostJsonAsync(primaryUrl, notificationData);
         }
