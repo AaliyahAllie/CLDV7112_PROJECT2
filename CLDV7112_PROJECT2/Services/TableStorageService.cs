@@ -1,142 +1,180 @@
-
-using Azure.Data.Tables;
+ï»¿using Azure.Data.Tables;
 using CLDV7112_PROJECT2.Models;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace CLDV7112_PROJECT2.Services
 {
+    /// <summary>
+    /// Service managing direct interaction with Azure Table Storage ("Customers", "Products", "Orders" tables).
+    /// Handles entity queries, insertions, stock updates, and order status changes.
+    /// </summary>
     public class TableStorageService
     {
-        private readonly TableClient _customerTableClient;
-        private readonly TableClient _productTableClient;
-        private readonly TableClient _orderTableClient;
+        private readonly TableServiceClient _serviceClient;
+        private readonly string _customerTableName = "Customers";
+        private readonly string _productTableName = "Products";
+        private readonly string _orderTableName = "Orders";
 
         public TableStorageService(string connectionString)
         {
-            var serviceClient = new TableServiceClient(connectionString);
-            _customerTableClient = serviceClient.GetTableClient("Customers");
-            _productTableClient = serviceClient.GetTableClient("Products");
-            _orderTableClient = serviceClient.GetTableClient("Orders");
-
-            _customerTableClient.CreateIfNotExists();
-            _productTableClient.CreateIfNotExists();
-            _orderTableClient.CreateIfNotExists();
+            _serviceClient = new TableServiceClient(connectionString);
         }
 
-        // -- Customer Operations --------------------------------------------------
+        // Helper method initializing Azure Table Client and creating tables if missing
+        private async Task<TableClient> GetTableClientAsync(string tableName)
+        {
+            var tableClient = _serviceClient.GetTableClient(tableName);
+            await tableClient.CreateIfNotExistsAsync();
+            return tableClient;
+        }
 
+        // -- Customers -------------------------------------------------------------
+
+        // Retrieves all registered customer profiles from Azure Table Storage
         public async Task<List<CustomerProfile>> GetCustomersAsync()
         {
-            var customers = new List<CustomerProfile>();
-            await foreach (var c in _customerTableClient.QueryAsync<CustomerProfile>())
-                customers.Add(c);
-            return customers;
+            var tableClient = await GetTableClientAsync(_customerTableName);
+            var query = tableClient.QueryAsync<CustomerProfile>(x => x.PartitionKey == "Customer" || x.PartitionKey == "Customers");
+            var result = new List<CustomerProfile>();
+            await foreach (var item in query) result.Add(item);
+            return result;
         }
 
+        // Fetches a single customer profile by partitionKey and rowKey
         public async Task<CustomerProfile> GetCustomerAsync(string partitionKey, string rowKey)
         {
+            var tableClient = await GetTableClientAsync(_customerTableName);
             try
             {
-                var response = await _customerTableClient.GetEntityAsync<CustomerProfile>(partitionKey, rowKey);
+                var response = await tableClient.GetEntityAsync<CustomerProfile>(partitionKey, rowKey);
                 return response.Value;
             }
-            catch { return null; }
+            catch
+            {
+                return null!;
+            }
         }
 
+        // Fetches a customer profile by email address
         public async Task<CustomerProfile> GetCustomerByEmailAsync(string email)
         {
-            await foreach (var c in _customerTableClient.QueryAsync<CustomerProfile>(x => x.Email == email))
-                return c;
-            return null;
+            var customers = await GetCustomersAsync();
+            return customers.FirstOrDefault(c => c.Email.Equals(email, StringComparison.OrdinalIgnoreCase))!;
         }
 
+        // Saves or updates a customer profile entity in Azure Tables
         public async Task UpsertCustomerAsync(CustomerProfile customer)
-            => await _customerTableClient.UpsertEntityAsync(customer);
+        {
+            var tableClient = await GetTableClientAsync(_customerTableName);
+            await tableClient.UpsertEntityAsync(customer);
+        }
 
+        // Deletes a customer profile from Azure Tables
         public async Task DeleteCustomerAsync(string partitionKey, string rowKey)
-            => await _customerTableClient.DeleteEntityAsync(partitionKey, rowKey);
+        {
+            var tableClient = await GetTableClientAsync(_customerTableName);
+            await tableClient.DeleteEntityAsync(partitionKey, rowKey);
+        }
 
-        // -- Product Operations ---------------------------------------------------
+        // -- Products --------------------------------------------------------------
 
+        // Retrieves all inventory products from Azure Table Storage
         public async Task<List<Product>> GetProductsAsync()
         {
-            var products = new List<Product>();
-            await foreach (var p in _productTableClient.QueryAsync<Product>())
-            {
-                // Default uninitialized stock quantities to 50 so existing items show in stock
-                if (p.StockQuantity <= 0) p.StockQuantity = 50;
-                products.Add(p);
-            }
-            return products;
+            var tableClient = await GetTableClientAsync(_productTableName);
+            var query = tableClient.QueryAsync<Product>(x => x.PartitionKey == "Product" || x.PartitionKey == "General");
+            var result = new List<Product>();
+            await foreach (var item in query) result.Add(item);
+            return result;
         }
 
+        // Fetches a single product by partitionKey and rowKey
         public async Task<Product> GetProductAsync(string partitionKey, string rowKey)
         {
+            var tableClient = await GetTableClientAsync(_productTableName);
             try
             {
-                var response = await _productTableClient.GetEntityAsync<Product>(partitionKey, rowKey);
-                var p = response.Value;
-                if (p != null && p.StockQuantity <= 0) p.StockQuantity = 50;
-                return p;
+                var response = await tableClient.GetEntityAsync<Product>(partitionKey, rowKey);
+                return response.Value;
             }
-            catch { return null; }
+            catch
+            {
+                return null!;
+            }
         }
 
+        // Saves or updates a product entity in Azure Tables
         public async Task UpsertProductAsync(Product product)
-            => await _productTableClient.UpsertEntityAsync(product);
+        {
+            var tableClient = await GetTableClientAsync(_productTableName);
+            await tableClient.UpsertEntityAsync(product);
+        }
 
+        // Deletes a product item from Azure Tables
         public async Task DeleteProductAsync(string partitionKey, string rowKey)
-            => await _productTableClient.DeleteEntityAsync(partitionKey, rowKey);
+        {
+            var tableClient = await GetTableClientAsync(_productTableName);
+            await tableClient.DeleteEntityAsync(partitionKey, rowKey);
+        }
 
+        // Decrements product inventory stock following a customer checkout
         public async Task UpdateProductStockAsync(string productId, int quantityToReduce)
         {
-            try
+            var product = await GetProductAsync("Product", productId);
+            if (product != null)
             {
-                var response = await _productTableClient.GetEntityAsync<Product>("Product", productId);
-                var product = response.Value;
-                product.StockQuantity = Math.Max(0, product.StockQuantity - quantityToReduce);
-                await _productTableClient.UpsertEntityAsync(product);
+                product.StockCount = Math.Max(0, product.StockCount - quantityToReduce);
+                await UpsertProductAsync(product);
             }
-            catch { /* Non-fatal – stock update failure should not block order */ }
         }
 
-        // -- Order Operations (Customer) ------------------------------------------
+        // -- Orders ----------------------------------------------------------------
 
+        // Fetches order history for a specific customer ID
         public async Task<List<OrderEntity>> GetOrdersForCustomerAsync(string customerId)
         {
-            var orders = new List<OrderEntity>();
-            await foreach (var o in _orderTableClient.QueryAsync<OrderEntity>(o => o.PartitionKey == customerId))
-                orders.Add(o);
-            orders.Sort((x, y) => y.OrderDate.CompareTo(x.OrderDate));
-            return orders;
+            var tableClient = await GetTableClientAsync(_orderTableName);
+            var query = tableClient.QueryAsync<OrderEntity>(x => x.PartitionKey == customerId);
+            var result = new List<OrderEntity>();
+            await foreach (var item in query) result.Add(item);
+            return result;
         }
 
-        // -- Order Operations (Admin) ---------------------------------------------
-
+        // Retrieves all customer orders across the store for admin view
         public async Task<List<OrderEntity>> GetAllOrdersAsync()
         {
-            var orders = new List<OrderEntity>();
-            await foreach (var o in _orderTableClient.QueryAsync<OrderEntity>())
-                orders.Add(o);
-            orders.Sort((x, y) => y.OrderDate.CompareTo(x.OrderDate));
-            return orders;
+            var tableClient = await GetTableClientAsync(_orderTableName);
+            var query = tableClient.QueryAsync<OrderEntity>();
+            var result = new List<OrderEntity>();
+            await foreach (var item in query) result.Add(item);
+            return result;
         }
 
+        // Saves an order entity in Azure Tables
         public async Task UpsertOrderAsync(OrderEntity order)
-            => await _orderTableClient.UpsertEntityAsync(order);
+        {
+            var tableClient = await GetTableClientAsync(_orderTableName);
+            await tableClient.UpsertEntityAsync(order);
+        }
 
+        // Updates order status (e.g. Processing -> Dispatched -> Delivered)
         public async Task UpdateOrderStatusAsync(string customerId, string orderId, string newStatus)
         {
+            var tableClient = await GetTableClientAsync(_orderTableName);
             try
             {
-                var response = await _orderTableClient.GetEntityAsync<OrderEntity>(customerId, orderId);
+                var response = await tableClient.GetEntityAsync<OrderEntity>(customerId, orderId);
                 var order = response.Value;
-                order.Status = newStatus;
-                await _orderTableClient.UpsertEntityAsync(order);
+                if (order != null)
+                {
+                    order.Status = newStatus;
+                    await tableClient.UpsertEntityAsync(order);
+                }
             }
-            catch { /* Non-fatal */ }
+            catch { }
         }
     }
 }

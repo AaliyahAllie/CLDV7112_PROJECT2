@@ -9,6 +9,11 @@ using System.Threading.Tasks;
 
 namespace CLDV7112_PROJECT2.Controllers
 {
+    /// <summary>
+    /// Admin Portal controller: manages product inventory, customer accounts, order fulfillment statuses,
+    /// order queues, and system audit logs.
+    /// Triggers background Azure Functions for blob uploads, table updates, and Service Bus messages.
+    /// </summary>
     public class AdminController : Controller
     {
         private readonly TableStorageService _tableStorageService;
@@ -31,10 +36,10 @@ namespace CLDV7112_PROJECT2.Controllers
             _functionsService = functionsService;
         }
 
+        // Helper method verifying active Administrator session
         private bool IsAdmin() => HttpContext.Session.GetString("UserRole") == "Admin";
 
-        // -- Dashboard ------------------------------------------------------------
-
+        // GET: /Admin - Dashboard summary showing customer, product, queue, and order counts
         [HttpGet]
         public async Task<IActionResult> Index()
         {
@@ -53,8 +58,7 @@ namespace CLDV7112_PROJECT2.Controllers
             return View();
         }
 
-        // -- Customers ------------------------------------------------------------
-
+        // GET: /Admin/Customers - List registered customer profiles
         [HttpGet]
         public async Task<IActionResult> Customers()
         {
@@ -63,8 +67,7 @@ namespace CLDV7112_PROJECT2.Controllers
             return View(customers);
         }
 
-        // -- Inventory (Products) -------------------------------------------------
-
+        // GET: /Admin/Products - Inventory management view
         [HttpGet]
         public async Task<IActionResult> Products()
         {
@@ -73,6 +76,7 @@ namespace CLDV7112_PROJECT2.Controllers
             return View(products);
         }
 
+        // GET: /Admin/AddProduct - Render new product form
         [HttpGet]
         public IActionResult AddProduct()
         {
@@ -80,6 +84,7 @@ namespace CLDV7112_PROJECT2.Controllers
             return View();
         }
 
+        // POST: /Admin/AddProduct - Save new product and upload photo to Azure Blob Storage via Azure Function 2 (UploadBlob)
         [HttpPost]
         public async Task<IActionResult> AddProduct(Product product, IFormFile imageFile)
         {
@@ -94,7 +99,7 @@ namespace CLDV7112_PROJECT2.Controllers
             product.PartitionKey = "Product";
             product.RowKey = Guid.NewGuid().ToString();
 
-            // Upload image via Azure Function 2 (Blob Function + Fallback)
+            // Upload product image to Azure Blob Storage via Azure Function 2 (UploadBlob)
             if (imageFile != null && imageFile.Length > 0)
             {
                 using var stream = imageFile.OpenReadStream();
@@ -107,6 +112,7 @@ namespace CLDV7112_PROJECT2.Controllers
                 _ = _functionsService.UploadBlobAsync("product-images", $"{product.RowKey}.jpg", base64, imageFile.ContentType);
             }
 
+            // Save product entity in Azure Tables via Azure Function 1 (StoreTableInfo)
             await _tableStorageService.UpsertProductAsync(product);
             _ = _functionsService.StoreTableInfoAsync(product);
 
@@ -114,6 +120,7 @@ namespace CLDV7112_PROJECT2.Controllers
             return RedirectToAction("Products");
         }
 
+        // GET: /Admin/EditProduct/{id} - Edit product form
         [HttpGet]
         public async Task<IActionResult> EditProduct(string id)
         {
@@ -123,6 +130,7 @@ namespace CLDV7112_PROJECT2.Controllers
             return View(product);
         }
 
+        // POST: /Admin/EditProduct - Update product info and image
         [HttpPost]
         public async Task<IActionResult> EditProduct(Product product, IFormFile imageFile)
         {
@@ -148,6 +156,7 @@ namespace CLDV7112_PROJECT2.Controllers
             return RedirectToAction("Products");
         }
 
+        // POST: /Admin/DeleteProduct/{id} - Delete product and image blob
         [HttpPost]
         public async Task<IActionResult> DeleteProduct(string id)
         {
@@ -165,8 +174,7 @@ namespace CLDV7112_PROJECT2.Controllers
             return RedirectToAction("Products");
         }
 
-        // -- Orders ---------------------------------------------------------------
-
+        // GET: /Admin/Orders - View all store orders
         [HttpGet]
         public async Task<IActionResult> Orders()
         {
@@ -175,6 +183,7 @@ namespace CLDV7112_PROJECT2.Controllers
             return View(orders);
         }
 
+        // POST: /Admin/UpdateOrderStatus - Update order fulfillment status and publish Azure Service Bus notification
         [HttpPost]
         public async Task<IActionResult> UpdateOrderStatus(string customerId, string orderId, string newStatus)
         {
@@ -182,6 +191,7 @@ namespace CLDV7112_PROJECT2.Controllers
             await _tableStorageService.UpdateOrderStatusAsync(customerId, orderId, newStatus);
             await _fileShareService.AppendOrderLogAsync("INFO", $"Order status updated. OrderId: {orderId}, CustomerId: {customerId}, New Status: {newStatus}");
             
+            // Publish status update notification to Azure Service Bus
             _ = _functionsService.SendServiceBusMessageAsync(new
             {
                 OrderId = orderId,
@@ -194,8 +204,7 @@ namespace CLDV7112_PROJECT2.Controllers
             return RedirectToAction("Orders");
         }
 
-        // -- Queue & Logs ---------------------------------------------------------
-
+        // GET: /Admin/Queue - View active messages in Azure Storage Queue
         [HttpGet]
         public async Task<IActionResult> Queue()
         {
@@ -204,6 +213,7 @@ namespace CLDV7112_PROJECT2.Controllers
             return View(messages);
         }
 
+        // POST: /Admin/ClearQueue - Clear all messages in Azure Storage Queue
         [HttpPost]
         public async Task<IActionResult> ClearQueue()
         {
@@ -213,6 +223,7 @@ namespace CLDV7112_PROJECT2.Controllers
             return RedirectToAction("Queue");
         }
 
+        // GET: /Admin/Logs - View system log files stored in Azure File Share
         [HttpGet]
         public async Task<IActionResult> Logs(string file = "system-logs.txt")
         {
@@ -234,6 +245,7 @@ namespace CLDV7112_PROJECT2.Controllers
             return View(logs);
         }
 
+        // POST: /Admin/ClearLogs - Clear log file in Azure File Share
         [HttpPost]
         public async Task<IActionResult> ClearLogs(string file = "system-logs.txt")
         {

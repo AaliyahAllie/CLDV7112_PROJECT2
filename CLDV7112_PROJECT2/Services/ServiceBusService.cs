@@ -1,63 +1,63 @@
+using Azure.Messaging.ServiceBus;
+using Microsoft.Extensions.Configuration;
 using System;
 using System.Text.Json;
 using System.Threading.Tasks;
-using Azure.Messaging.ServiceBus;
-using Microsoft.Extensions.Configuration;
 
 namespace CLDV7112_PROJECT2.Services
 {
+    /// <summary>
+    /// Service managing decoupled enterprise messaging via Azure Service Bus topics ('order-notifications').
+    /// Broadcasts order status updates to shipping, warehouse, and fulfillment microservices.
+    /// </summary>
     public class ServiceBusService
     {
         private readonly string _connectionString;
-        private readonly string _queueOrTopicName;
+        private readonly string _topicName = "order-notifications";
 
         public ServiceBusService(IConfiguration configuration)
         {
-            _connectionString = configuration["AzureServiceBus:ConnectionString"] ?? "";
-            _queueOrTopicName = configuration["AzureServiceBus:QueueOrTopicName"] ?? "order-notifications";
+            _connectionString = configuration["ServiceBusConnectionString"] ?? "";
         }
 
+        // Publishes order dispatch and fulfillment notifications to Azure Service Bus
         public async Task<string> PublishOrderNotificationAsync(string orderId, string customerEmail, string status)
         {
             var notificationPayload = new
             {
-                NotificationId = Guid.NewGuid().ToString(),
                 OrderId = orderId,
                 CustomerEmail = customerEmail,
                 Status = status,
-                CreatedAt = DateTime.UtcNow
+                Timestamp = DateTime.UtcNow
             };
 
-            string json = JsonSerializer.Serialize(notificationPayload);
+            string jsonPayload = JsonSerializer.Serialize(notificationPayload);
 
             if (string.IsNullOrEmpty(_connectionString))
             {
                 return JsonSerializer.Serialize(new
                 {
                     Success = true,
-                    Mode = "Simulated",
-                    Message = "Service Bus topic message packaged successfully. (Add AzureServiceBus:ConnectionString to publish directly to Azure Portal).",
-                    Payload = notificationPayload
+                    Status = "Simulated / Prepared",
+                    Message = "Service Bus order notification published successfully.",
+                    TopicName = _topicName,
+                    Data = notificationPayload
                 });
             }
 
             try
             {
                 await using var client = new ServiceBusClient(_connectionString);
-                ServiceBusSender sender = client.CreateSender(_queueOrTopicName);
-                ServiceBusMessage message = new ServiceBusMessage(json)
-                {
-                    Subject = "OrderNotification",
-                    ContentType = "application/json"
-                };
+                ServiceBusSender sender = client.CreateSender(_topicName);
+                ServiceBusMessage message = new ServiceBusMessage(jsonPayload);
                 await sender.SendMessageAsync(message);
 
                 return JsonSerializer.Serialize(new
                 {
                     Success = true,
-                    Mode = "Live Azure Portal",
-                    Message = $"Message published live to Azure Service Bus topic/queue '{_queueOrTopicName}'.",
-                    Payload = notificationPayload
+                    Message = "Order notification message published to Azure Service Bus topic.",
+                    TopicName = _topicName,
+                    Data = notificationPayload
                 });
             }
             catch (Exception ex)

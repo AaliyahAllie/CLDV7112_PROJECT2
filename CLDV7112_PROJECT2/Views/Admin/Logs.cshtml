@@ -1,106 +1,93 @@
-@model IEnumerable<CLDV7112_PROJECT2.Models.LogEntry>
+ï»¿@model IEnumerable<CLDV7112_PROJECT2.Models.LogEntry>
 @{
-    ViewData["Title"] = "System Logs";
-    var logFiles = ViewBag.LogFileNames as string[];
+    ViewData["Title"] = "System Logs - ABC Retail";
     var activeFile = ViewBag.ActiveFile as string ?? "system-logs.txt";
-
+    var logFiles = ViewBag.LogFileNames as string[];
     var displayNames = new Dictionary<string, string>
     {
-        ["system-logs.txt"] = "System",
-        ["order-logs.txt"] = "Orders",
-        ["product-logs.txt"] = "Products",
-        ["customer-logs.txt"] = "Customers",
-        ["error-logs.txt"] = "Errors"
-    };
-    var icons = new Dictionary<string, string>
-    {
-        ["system-logs.txt"] = "bi-gear",
-        ["order-logs.txt"] = "bi-bag-check",
-        ["product-logs.txt"] = "bi-box-seam",
-        ["customer-logs.txt"] = "bi-people",
-        ["error-logs.txt"] = "bi-exclamation-triangle"
+        { "system-logs.txt", "System Logs" },
+        { "order-logs.txt", "Order Logs" },
+        { "product-logs.txt", "Product Logs" },
+        { "customer-logs.txt", "Customer Logs" },
+        { "error-logs.txt", "Error Logs" }
     };
 }
 
-<div class="row mb-4 align-items-center">
-    <div class="col-md-8">
-        <h1 class="display-6 fw-bold"><span class="text-gradient">?? System Logs</span></h1>
-        <p class="text-white-50">
-            Log entries are stored as named files in <strong class="text-white">Azure File Storage</strong>
-            (<code>logs-share</code>). Each file tracks a different operational domain.
-        </p>
-    </div>
-    <div class="col-md-4 text-md-end">
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center flex-wrap mb-4 gap-3">
+        <div>
+            <h2 class="fw-bold text-gradient mb-1">
+                <i class="bi bi-terminal-fill me-2"></i>System & Storage Audit Logs
+            </h2>
+            <p class="text-white-50 mb-0">Logs stored in Azure File Share (<code>contracts</code>). Select a file to inspect operations.</p>
+        </div>
         <form asp-action="ClearLogs" method="post" class="d-inline">
             <input type="hidden" name="file" value="@activeFile" />
-            <button type="submit" class="btn btn-outline-danger btn-sm"
-                    onclick="return confirm('Clear this log file?')">
-                <i class="bi bi-trash3 me-1"></i>Clear @(displayNames.ContainsKey(activeFile) ? displayNames[activeFile] : activeFile) Log
+            <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Clear log file @activeFile?')">
+                <i class="bi bi-trash3 me-1"></i>Clear Log
             </button>
         </form>
     </div>
-</div>
 
-@if (TempData["Success"] != null)
-{
-    <div class="alert alert-success border-0 glass-panel mb-4">? @TempData["Success"]</div>
-}
-
-<!-- 5 Log File Tabs (satisfies rubric: 5 named files in Azure File Storage) -->
-<ul class="nav mb-4" style="gap:8px;">
-    @foreach (var file in logFiles ?? Array.Empty<string>())
+    @if (TempData["Success"] != null)
     {
-        var isActive = file == activeFile;
-        var display = displayNames.ContainsKey(file) ? displayNames[file] : file;
-        var icon = icons.ContainsKey(file) ? icons[file] : "bi-file-text";
-        <li class="nav-item">
+        <div class="alert alert-success border-0 glass-panel mb-4">@TempData["Success"]</div>
+    }
+
+    <!-- Log File Tabs -->
+    <div class="d-flex flex-wrap gap-2 mb-4">
+        @foreach (var file in logFiles ?? Array.Empty<string>())
+        {
+            var isActive = file == activeFile;
+            var display = displayNames.ContainsKey(file) ? displayNames[file] : file;
+            var icon = file switch
+            {
+                "order-logs.txt" => "bi-receipt",
+                "product-logs.txt" => "bi-box-seam",
+                "customer-logs.txt" => "bi-person",
+                "error-logs.txt" => "bi-exclamation-triangle",
+                _ => "bi-terminal"
+            };
             <a href="@Url.Action("Logs", new { file })"
                class="btn @(isActive ? "btn-rainbow" : "btn-glass") btn-sm">
                 <i class="bi @icon me-1"></i>@display
             </a>
-        </li>
-    }
-</ul>
-
-<!-- Active file info -->
-<div class="glass-panel p-3 mb-3 d-flex align-items-center gap-3">
-    <i class="bi bi-file-earmark-text fs-4 text-gradient"></i>
-    <div>
-        <strong class="text-white d-block">@activeFile</strong>
-        <small class="text-white-50">Azure File Share: <code>logs-share/@activeFile</code> · @Model.Count() entries</small>
-    </div>
-</div>
-
-<!-- Log Entries -->
-<div class="terminal-window">
-    <div class="terminal-header">
-        <span class="terminal-dot dot-red"></span>
-        <span class="terminal-dot dot-yellow"></span>
-        <span class="terminal-dot dot-green"></span>
-        <span class="text-white-50 small ms-3">@activeFile</span>
-    </div>
-    <div class="terminal-body">
-        @if (!Model.Any())
-        {
-            <p class="text-muted mb-0">No log entries in this file yet.</p>
         }
-        else
-        {
-            @foreach (var entry in Model)
+    </div>
+
+    <!-- Terminal Window -->
+    <div class="terminal-window">
+        <div class="terminal-header d-flex justify-content-between">
+            <div>
+                <span class="terminal-dot dot-red"></span>
+                <span class="terminal-dot dot-yellow"></span>
+                <span class="terminal-dot dot-green"></span>
+                <span class="text-white-50 small ms-2">@activeFile</span>
+            </div>
+            <span class="text-white-50 small">@Model.Count() entries</span>
+        </div>
+        <div class="terminal-body">
+            @if (!Model.Any())
             {
-                var css = entry.Level switch
-                {
-                    "INFO" => "log-info",
-                    "WARNING" => "log-warning",
-                    "ERROR" => "log-error",
-                    _ => "text-white-50"
-                };
-                <div class="mb-1">
-                    <span class="log-timestamp">[@entry.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")]</span>
-                    <span class="@css fw-semibold"> [@entry.Level]</span>
-                    <span class="text-white"> @entry.Message</span>
-                </div>
+                <span class="text-muted">// Log file is empty or has not received any events yet.</span>
             }
-        }
+            else
+            {
+                @foreach (var entry in Model)
+                {
+                    var css = entry.Level.ToUpper() switch
+                    {
+                        "ERROR" => "log-error",
+                        "WARNING" => "log-warning",
+                        _ => "log-info"
+                    };
+                    <div class="mb-1">
+                        <span class="log-timestamp">[@entry.Timestamp]</span>
+                        <span class="@css fw-semibold"> [@entry.Level]</span>
+                        <span class="text-white"> @entry.Message</span>
+                    </div>
+                }
+            }
+        </div>
     </div>
 </div>

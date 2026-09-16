@@ -1,5 +1,4 @@
 using Azure.Storage.Files.Shares;
-using Azure.Storage.Files.Shares.Models;
 using CLDV7112_PROJECT2.Models;
 using System;
 using System.Collections.Generic;
@@ -9,12 +8,15 @@ using System.Threading.Tasks;
 
 namespace CLDV7112_PROJECT2.Services
 {
+    /// <summary>
+    /// Service managing direct interaction with Azure File Shares ("contracts" share).
+    /// Stores and reads audit log text files and vendor agreement documents in cloud file storage.
+    /// </summary>
     public class FileShareService
     {
         private readonly ShareClient _shareClient;
-        private readonly ShareDirectoryClient _rootDir;
+        private readonly string _shareName = "contracts";
 
-        // The 5 named log files stored in Azure File Storage (satisfies rubric: 5 files by name)
         public static readonly string[] LogFileNames =
         {
             "system-logs.txt",
@@ -26,26 +28,31 @@ namespace CLDV7112_PROJECT2.Services
 
         public FileShareService(string connectionString)
         {
-            _shareClient = new ShareClient(connectionString, "logs-share");
-            _shareClient.CreateIfNotExists();
-            _rootDir = _shareClient.GetRootDirectoryClient();
-
-            // Ensure all 5 log files exist on startup
-            foreach (var fileName in LogFileNames)
-            {
-                var fileClient = _rootDir.GetFileClient(fileName);
-                if (!fileClient.Exists())
-                {
-                    fileClient.Create(0);
-                }
-            }
-
-            // Write startup entry to system log
-            AppendToFileInternal("system-logs.txt", "INFO", "ABCRetailWeb application started. All Azure Storage services initialised.");
+            _shareClient = new ShareClient(connectionString, _shareName);
+            EnsureShareAndFilesCreated();
         }
 
-        // -- Named log convenience methods ----------------------------------------
+        // Ensures Azure File Share directory and log files exist
+        private void EnsureShareAndFilesCreated()
+        {
+            try
+            {
+                _shareClient.CreateIfNotExists();
+                var directory = _shareClient.GetRootDirectoryClient();
 
+                foreach (var fileName in LogFileNames)
+                {
+                    var file = directory.GetFileClient(fileName);
+                    if (!file.Exists())
+                    {
+                        AppendToFileInternal(fileName, "INFO", $"Log file '{fileName}' initialized in Azure File Share.");
+                    }
+                }
+            }
+            catch { }
+        }
+
+        // Log appending helper methods
         public Task AppendSystemLogAsync(string level, string message)
             => Task.Run(() => AppendToFileInternal("system-logs.txt", level, message));
 
@@ -61,113 +68,121 @@ namespace CLDV7112_PROJECT2.Services
         public Task AppendErrorLogAsync(string level, string message)
             => Task.Run(() => AppendToFileInternal("error-logs.txt", level, message));
 
-        // Generic append (backwards compat – defaults to system log)
         public void AppendLog(string level, string message)
             => AppendToFileInternal("system-logs.txt", level, message);
 
         public Task AppendLogAsync(string level, string message)
-            => AppendSystemLogAsync(level, message);
+            => Task.Run(() => AppendToFileInternal("system-logs.txt", level, message));
 
-        // -- Core internal append (download ? concat ? re-upload) ----------------
-
+        // Synchronous internal writer for Azure File Share log ranges
         private void AppendToFileInternal(string fileName, string level, string message)
         {
-            var fileClient = _rootDir.GetFileClient(fileName);
-
-            // ShareFileClient has no CreateIfNotExists — use Exists() check
-            if (!fileClient.Exists())
-                fileClient.Create(0);
-
-            string existingContent = "";
-            var props = fileClient.GetProperties();
-            if (props.Value.ContentLength > 0)
+            try
             {
-                // Download returns Response<ShareFileDownloadInfo> which is not IDisposable;
-                // access Content stream directly and dispose it.
-                var downloadResponse = fileClient.Download();
-                using var reader = new StreamReader(downloadResponse.Value.Content);
-                existingContent = reader.ReadToEnd();
+                var directory = _shareClient.GetRootDirectoryClient();
+                var file = directory.GetFileClient(fileName);
+
+                string timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss");
+                string logLine = $"[{timestamp}] [{level.ToUpper()}] {message}\n";
+                byte[] bytes = Encoding.UTF8.GetBytes(logLine);
+
+                if (!file.Exists())
+                {
+                    file.Create(bytes.Length);
+                    using var ms = new MemoryStream(bytes);
+                    file.UploadRange(new Azure.HttpRange(0, bytes.Length), ms);
+                }
+                else
+                {
+                    long currentSize = file.GetProperties().Value.ContentLength;
+                    file.Create(currentSize + bytes.Length);
+
+                    using var ms = new MemoryStream(bytes);
+                    file.UploadRange(new Azure.HttpRange(currentSize, bytes.Length), ms);
+                }
             }
-
-            var newLine = $"{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} [{level}] {message}{Environment.NewLine}";
-            var fullContent = existingContent + newLine;
-            var contentBytes = Encoding.UTF8.GetBytes(fullContent);
-
-            fileClient.Create(contentBytes.Length);
-            using var uploadStream = new MemoryStream(contentBytes);
-            fileClient.UploadRange(new Azure.HttpRange(0, contentBytes.Length), uploadStream);
+            catch { }
         }
 
-        // -- Read a specific log file ---------------------------------------------
-
+        // Reads log file entries from Azure File Share
         public async Task<List<LogEntry>> ReadLogFileAsync(string fileName)
         {
             var entries = new List<LogEntry>();
-            var fileClient = _rootDir.GetFileClient(fileName);
-
-            if (!fileClient.Exists()) return entries;
-
-            var props = fileClient.GetProperties();
-            if (props.Value.ContentLength == 0) return entries;
-
-            var response = await fileClient.DownloadAsync();
-            using var reader = new StreamReader(response.Value.Content);
-            var content = await reader.ReadToEndAsync();
-
-            foreach (var line in content.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+            try
             {
-                var trimmed = line.Trim();
-                if (string.IsNullOrWhiteSpace(trimmed)) continue;
-                try
+                var directory = _shareClient.GetRootDirectoryClient();
+                var file = directory.GetFileClient(fileName);
+
+                if (!await file.ExistsAsync()) return entries;
+
+                var download = await file.DownloadAsync();
+                using var reader = new StreamReader(download.Value.Content, Encoding.UTF8);
+
+                string line;
+                while ((line = await reader.ReadLineAsync()) != null)
                 {
-                    // Format: "yyyy-MM-dd HH:mm:ss [LEVEL] message"
-                    var datePart = trimmed.Substring(0, 19);
-                    var rest = trimmed.Substring(20);
-                    var levelEnd = rest.IndexOf(']');
-                    var level = rest.Substring(1, levelEnd - 1);
-                    var msg = rest.Substring(levelEnd + 2);
-                    entries.Add(new LogEntry
+                    if (string.IsNullOrWhiteSpace(line)) continue;
+
+                    if (line.StartsWith("[") && line.Contains("]"))
                     {
-                        Timestamp = DateTime.Parse(datePart),
-                        Level = level,
-                        Message = msg
-                    });
-                }
-                catch
-                {
-                    entries.Add(new LogEntry
+                        var closeBracket = line.IndexOf(']');
+                        var timestamp = line.Substring(1, closeBracket - 1);
+                        var remainder = line.Substring(closeBracket + 1).Trim();
+
+                        string level = "INFO";
+                        string msg = remainder;
+
+                        if (remainder.StartsWith("["))
+                        {
+                            var closeLevel = remainder.IndexOf(']');
+                            level = remainder.Substring(1, closeLevel - 1);
+                            msg = remainder.Substring(closeLevel + 1).Trim();
+                        }
+
+                        entries.Add(new LogEntry
+                        {
+                            Timestamp = timestamp,
+                            Level = level,
+                            Message = msg
+                        });
+                    }
+                    else
                     {
-                        Timestamp = DateTime.UtcNow,
-                        Level = "RAW",
-                        Message = trimmed
-                    });
+                        entries.Add(new LogEntry
+                        {
+                            Timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"),
+                            Level = "INFO",
+                            Message = line
+                        });
+                    }
                 }
             }
+            catch { }
 
-            entries.Reverse();
             return entries;
         }
 
-        // -- Clear a specific log file --------------------------------------------
-
+        // Clears a log file in Azure File Share
         public async Task ClearLogFileAsync(string fileName)
         {
-            var fileClient = _rootDir.GetFileClient(fileName);
-            await fileClient.DeleteIfExistsAsync();
-            fileClient.Create(0);
-            AppendToFileInternal(fileName, "INFO", $"Log file '{fileName}' cleared and reinitialised.");
-        }
-
-        // Legacy clear (clears all files)
-        public async Task ClearLogsAsync()
-        {
-            foreach (var fileName in LogFileNames)
+            var directory = _shareClient.GetRootDirectoryClient();
+            var file = directory.GetFileClient(fileName);
+            if (await file.ExistsAsync())
             {
-                await ClearLogFileAsync(fileName);
+                await file.DeleteAsync();
+                await Task.Run(() => AppendToFileInternal(fileName, "INFO", $"Log file '{fileName}' cleared and reset."));
             }
         }
 
-        // Read logs from default system log (backwards compat)
+        // Clears all log files in Azure File Share
+        public async Task ClearLogsAsync()
+        {
+            foreach (var fn in LogFileNames)
+            {
+                await ClearLogFileAsync(fn);
+            }
+        }
+
         public Task<List<LogEntry>> ReadLogsAsync() => ReadLogFileAsync("system-logs.txt");
     }
 }

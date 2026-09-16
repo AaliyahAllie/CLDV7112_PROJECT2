@@ -1,98 +1,80 @@
-
 using Azure.Storage.Queues;
 using Azure.Storage.Queues.Models;
 using CLDV7112_PROJECT2.Models;
 using System;
 using System.Collections.Generic;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace CLDV7112_PROJECT2.Services
 {
+    /// <summary>
+    /// Service managing direct interaction with Azure Storage Queue ('order-transactions').
+    /// Pushes, retrieves, and clears transaction queue messages.
+    /// </summary>
     public class QueueStorageService
     {
-        private readonly QueueClient _queueClient;
+        private readonly QueueServiceClient _queueServiceClient;
+        private readonly string _queueName = "order-transactions";
 
         public QueueStorageService(string connectionString)
         {
-            // We use standard option to base64 encode/decode messages automatically in modern Azure SDK,
-            // or do it manually. We'll handle encoding manually to be safe and compatible with all client setups.
-            _queueClient = new QueueClient(connectionString, "order-processing-queue");
-            _queueClient.CreateIfNotExists();
+            _queueServiceClient = new QueueServiceClient(connectionString);
         }
 
+        // Helper method returning QueueClient and ensuring the queue exists
+        private async Task<QueueClient> GetQueueClientAsync()
+        {
+            var queueClient = _queueServiceClient.GetQueueClient(_queueName);
+            await queueClient.CreateIfNotExistsAsync();
+            return queueClient;
+        }
+
+        // Pushes a base64 encoded transaction message to Azure Queue Storage
         public async Task SendMessageAsync(string messageText)
         {
-            var bytes = System.Text.Encoding.UTF8.GetBytes(messageText);
-            var base64Message = Convert.ToBase64String(bytes);
-            await _queueClient.SendMessageAsync(base64Message);
+            var queueClient = await GetQueueClientAsync();
+            string base64Message = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(messageText));
+            await queueClient.SendMessageAsync(base64Message);
         }
 
-        public async Task<List<QueueMessageModel>> GetMessagesAsync(int maxMessages = 20)
+        // Retrieves active queue messages from Azure Storage Queue
+        public async Task<List<QueueMessageModel>> GetMessagesAsync(int maxMessages = 10)
         {
+            var queueClient = await GetQueueClientAsync();
+            QueueMessage[] messages = await queueClient.ReceiveMessagesAsync(maxMessages);
             var result = new List<QueueMessageModel>();
 
-            // PeekMessages doesn't change visibility, which is ideal for a read-only list on a dashboard
-            var response = await _queueClient.PeekMessagesAsync(maxMessages);
-
-            foreach (var msg in response.Value)
+            foreach (var message in messages)
             {
-                string decodedText;
+                string text;
                 try
                 {
-                    var bytes = Convert.FromBase64String(msg.MessageText);
-                    decodedText = System.Text.Encoding.UTF8.GetString(bytes);
+                    var bytes = Convert.FromBase64String(message.MessageText);
+                    text = System.Text.Encoding.UTF8.GetString(bytes);
                 }
                 catch
                 {
-                    decodedText = msg.MessageText; // Fallback
+                    text = message.MessageText;
                 }
 
                 result.Add(new QueueMessageModel
                 {
-                    MessageId = msg.MessageId,
-                    MessageText = decodedText,
-                    InsertionTime = msg.InsertedOn,
-                    ExpirationTime = msg.ExpiresOn
+                    MessageId = message.MessageId,
+                    MessageText = text,
+                    InsertionTime = message.InsertedOn,
+                    ExpirationTime = message.ExpiresOn
                 });
             }
 
             return result;
         }
 
-        public async Task<QueueMessageModel> DequeueMessageAsync()
-        {
-            // Dequeue actually receives the message and hides it from other consumers
-            var response = await _queueClient.ReceiveMessagesAsync(1);
-            if (response.Value.Length > 0)
-            {
-                var msg = response.Value[0];
-                string decodedText;
-                try
-                {
-                    var bytes = Convert.FromBase64String(msg.MessageText);
-                    decodedText = System.Text.Encoding.UTF8.GetString(bytes);
-                }
-                catch
-                {
-                    decodedText = msg.MessageText;
-                }
-
-                // Delete it immediately as we've processed it
-                await _queueClient.DeleteMessageAsync(msg.MessageId, msg.PopReceipt);
-
-                return new QueueMessageModel
-                {
-                    MessageId = msg.MessageId,
-                    MessageText = decodedText,
-                    InsertionTime = msg.InsertedOn
-                };
-            }
-            return null;
-        }
-
+        // Clears all messages from the transaction queue
         public async Task ClearQueueAsync()
         {
-            await _queueClient.ClearMessagesAsync();
+            var queueClient = await GetQueueClientAsync();
+            await queueClient.ClearMessagesAsync();
         }
     }
 }

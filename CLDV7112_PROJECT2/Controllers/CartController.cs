@@ -1,120 +1,139 @@
-using CLDV7112_PROJECT2.Models;
-using CLDV7112_PROJECT2.Services;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using CLDV7112_PROJECT2.Models;
+using CLDV7112_PROJECT2.Services;
 
 namespace CLDV7112_PROJECT2.Controllers
 {
+    /// <summary>
+    /// Manages shopping cart operations (view cart, add items, update quantities, remove items).
+    /// Stores cart state in encrypted HTTP session storage for seamless shopping.
+    /// </summary>
     public class CartController : Controller
     {
-        private readonly TableStorageService _tableStorageService;
         private const string CartSessionKey = "Cart";
+        private readonly TableStorageService _tableStorageService;
+        private readonly FunctionsService _functionsService;
 
-        public CartController(TableStorageService tableStorageService)
+        public CartController(TableStorageService tableStorageService, FunctionsService functionsService)
         {
             _tableStorageService = tableStorageService;
+            _functionsService = functionsService;
         }
 
-        private bool IsCustomer() => HttpContext.Session.GetString("UserRole") == "Customer";
-
+        // Retrieves the list of cart items stored in session
         private List<CartItem> GetCart()
         {
-            var json = HttpContext.Session.GetString(CartSessionKey);
-            return string.IsNullOrEmpty(json)
-                ? new List<CartItem>()
-                : JsonSerializer.Deserialize<List<CartItem>>(json) ?? new List<CartItem>();
+            var cartJson = HttpContext.Session.GetString(CartSessionKey);
+            if (string.IsNullOrEmpty(cartJson)) return new List<CartItem>();
+            try
+            {
+                return JsonSerializer.Deserialize<List<CartItem>>(cartJson) ?? new List<CartItem>();
+            }
+            catch
+            {
+                return new List<CartItem>();
+            }
         }
 
+        // Saves current cart state back to session
         private void SaveCart(List<CartItem> cart)
-            => HttpContext.Session.SetString(CartSessionKey, JsonSerializer.Serialize(cart));
+        {
+            HttpContext.Session.SetString(CartSessionKey, JsonSerializer.Serialize(cart));
+        }
 
-        [HttpGet]
+        // GET: /Cart - Renders the shopping cart page
         public IActionResult Index()
         {
-            if (!IsCustomer()) return RedirectToAction("Login", "Home");
-            return View(GetCart());
+            var cart = GetCart();
+            return View(cart);
         }
 
+        // POST: /Cart/AddToCart - Adds a product item to the shopping cart
         [HttpPost]
-        public async Task<IActionResult> AddToCart(string productId, int quantity = 1)
+        public async Task<IActionResult> AddToCart(string partitionKey, string rowKey, int quantity = 1)
         {
-            if (!IsCustomer()) return RedirectToAction("Login", "Home");
-
-            var product = await _tableStorageService.GetProductAsync("Product", productId);
-            if (product == null) return NotFound();
-
-            if (product.StockQuantity <= 0)
+            var product = await _tableStorageService.GetProductAsync(partitionKey, rowKey);
+            if (product == null)
             {
-                TempData["Error"] = $"Sorry, '{product.Name}' is currently out of stock.";
+                TempData["Error"] = "Product not found.";
                 return RedirectToAction("Index", "Customer");
             }
 
             var cart = GetCart();
-            var existing = cart.FirstOrDefault(x => x.ProductId == productId);
+            var existingItem = cart.FirstOrDefault(x => x.ProductId == rowKey);
 
-            if (existing != null)
+            if (existingItem != null)
             {
-                existing.Quantity = Math.Min(existing.Quantity + quantity, product.StockQuantity);
+                existingItem.Quantity += quantity;
             }
             else
             {
                 cart.Add(new CartItem
                 {
-                    ProductId = productId,
+                    ProductId = product.RowKey,
                     ProductName = product.Name,
                     Price = product.Price,
                     ImageUrl = product.ImageUrl,
                     Category = product.Category,
-                    Quantity = Math.Min(quantity, product.StockQuantity)
+                    Quantity = quantity
                 });
             }
 
             SaveCart(cart);
-            TempData["Success"] = $"'{product.Name}' added to your cart!";
-            return RedirectToAction("Index", "Customer");
+            TempData["Success"] = $"Added '{product.Name}' to your shopping cart!";
+
+            // Stream user activity telemetry to Azure Event Hubs invisibly
+            _ = _functionsService.SendEventHubTelemetryAsync(new
+            {
+                User = HttpContext.Session.GetString("UserName") ?? "Visitor",
+                Action = "AddToCart",
+                Product = product.Name,
+                Category = product.Category,
+                Timestamp = DateTime.UtcNow
+            });
+
+            return RedirectToAction("Index");
         }
 
+        // POST: /Cart/UpdateQuantity - Changes the quantity of an item in the cart
         [HttpPost]
         public IActionResult UpdateQuantity(string productId, int quantity)
         {
-            if (!IsCustomer()) return RedirectToAction("Login", "Home");
-
             var cart = GetCart();
             var item = cart.FirstOrDefault(x => x.ProductId == productId);
             if (item != null)
             {
                 if (quantity <= 0)
+                {
                     cart.Remove(item);
+                }
                 else
+                {
                     item.Quantity = quantity;
+                }
+                SaveCart(cart);
             }
-
-            SaveCart(cart);
             return RedirectToAction("Index");
         }
 
+        // POST: /Cart/RemoveFromCart - Deletes an item from the cart
         [HttpPost]
-        public IActionResult RemoveItem(string productId)
+        public IActionResult RemoveFromCart(string productId)
         {
-            if (!IsCustomer()) return RedirectToAction("Login", "Home");
-
             var cart = GetCart();
-            cart.RemoveAll(x => x.ProductId == productId);
-            SaveCart(cart);
-            TempData["Success"] = "Item removed from cart.";
-            return RedirectToAction("Index");
-        }
-
-        [HttpPost]
-        public IActionResult Clear()
-        {
-            if (!IsCustomer()) return RedirectToAction("Login", "Home");
-            HttpContext.Session.Remove(CartSessionKey);
+            var item = cart.FirstOrDefault(x => x.ProductId == productId);
+            if (item != null)
+            {
+                cart.Remove(item);
+                SaveCart(cart);
+                TempData["Success"] = $"Removed '{item.ProductName}' from your cart.";
+            }
             return RedirectToAction("Index");
         }
     }

@@ -9,6 +9,10 @@ using System.Threading.Tasks;
 
 namespace CLDV7112_PROJECT2.Controllers
 {
+    /// <summary>
+    /// Handles public website navigation, home landing page, customer login, registration, and logout.
+    /// Triggers background Azure Functions automatically during registration and login.
+    /// </summary>
     public class HomeController : Controller
     {
         private readonly TableStorageService _tableStorageService;
@@ -28,17 +32,20 @@ namespace CLDV7112_PROJECT2.Controllers
             _configuration = configuration;
         }
 
+        // GET: / - Public storefront landing page showing featured inventory items
         public async Task<IActionResult> Index()
         {
             var products = await _tableStorageService.GetProductsAsync();
             return View(products);
         }
 
+        // GET: /Home/About - About & Services page
         public IActionResult About()
         {
             return View();
         }
 
+        // GET: /Home/Login - Renders login form
         [HttpGet]
         public IActionResult Login()
         {
@@ -49,6 +56,7 @@ namespace CLDV7112_PROJECT2.Controllers
             return View();
         }
 
+        // POST: /Home/Login - Authenticates admin and customer login requests
         [HttpPost]
         public async Task<IActionResult> Login(string usernameOrEmail, string password)
         {
@@ -58,7 +66,7 @@ namespace CLDV7112_PROJECT2.Controllers
                 return View();
             }
 
-            // Check Admin Credentials from appsettings.json
+            // Verify Admin Credentials from appsettings.json
             var adminUser = _configuration["AdminSettings:Username"] ?? "admin@abcretail.co.za";
             var adminPass = _configuration["AdminSettings:Password"] ?? "AdminPassword123!";
 
@@ -71,7 +79,7 @@ namespace CLDV7112_PROJECT2.Controllers
                 return RedirectToAction("Index", "Admin");
             }
 
-            // Check Customer in Table Storage
+            // Verify Customer profile in Azure Table Storage
             var customers = await _tableStorageService.GetCustomersAsync();
             var customer = customers.Find(c => c.Email.Equals(usernameOrEmail, StringComparison.OrdinalIgnoreCase) && c.Password == password);
 
@@ -83,7 +91,7 @@ namespace CLDV7112_PROJECT2.Controllers
                 HttpContext.Session.SetString("UserId", customer.RowKey);
                 await _fileShareService.AppendCustomerLogAsync("INFO", $"Customer {customer.Email} logged in successfully.");
 
-                // Event Hubs Telemetry stream
+                // Stream login activity to Azure Event Hubs invisibly
                 _ = _functionsService.SendEventHubTelemetryAsync(new
                 {
                     UserId = customer.RowKey,
@@ -100,6 +108,7 @@ namespace CLDV7112_PROJECT2.Controllers
             return View();
         }
 
+        // GET: /Home/Register - Renders customer signup form
         [HttpGet]
         public IActionResult Register()
         {
@@ -110,6 +119,7 @@ namespace CLDV7112_PROJECT2.Controllers
             return View();
         }
 
+        // POST: /Home/Register - Creates a new customer profile and triggers Azure Function 1 (StoreTableInfo)
         [HttpPost]
         public async Task<IActionResult> Register(CustomerProfile customer)
         {
@@ -119,7 +129,7 @@ namespace CLDV7112_PROJECT2.Controllers
                 return View(customer);
             }
 
-            // Check if customer already exists
+            // Ensure email address is unique
             var existing = await _tableStorageService.GetCustomersAsync();
             if (existing.Exists(c => c.Email.Equals(customer.Email, StringComparison.OrdinalIgnoreCase)))
             {
@@ -137,11 +147,11 @@ namespace CLDV7112_PROJECT2.Controllers
 
             if (ModelState.IsValid)
             {
-                // Save customer profile via Azure Function 1 (Store Table Info + Fallback)
+                // Save customer profile via Azure Function 1 (StoreTableInfo)
                 await _tableStorageService.UpsertCustomerAsync(customer);
                 _ = _functionsService.StoreTableInfoAsync(customer);
 
-                // Event Hubs registration stream
+                // Stream signup event to Azure Event Hubs
                 _ = _functionsService.SendEventHubTelemetryAsync(new
                 {
                     UserId = customer.RowKey,
@@ -152,7 +162,7 @@ namespace CLDV7112_PROJECT2.Controllers
 
                 await _fileShareService.AppendCustomerLogAsync("INFO", $"New customer registered: {customer.Email} ({customer.FirstName} {customer.LastName})");
 
-                // Log in the new user
+                // Establish session for the newly registered customer
                 HttpContext.Session.SetString("UserRole", "Customer");
                 HttpContext.Session.SetString("UserEmail", customer.Email);
                 HttpContext.Session.SetString("UserName", $"{customer.FirstName} {customer.LastName}");
@@ -164,6 +174,7 @@ namespace CLDV7112_PROJECT2.Controllers
             return View(customer);
         }
 
+        // GET: /Home/Logout - Clears user session and logs out
         public async Task<IActionResult> Logout()
         {
             var user = HttpContext.Session.GetString("UserEmail") ?? HttpContext.Session.GetString("UserRole") ?? "Guest";
@@ -172,6 +183,7 @@ namespace CLDV7112_PROJECT2.Controllers
             return RedirectToAction("Index");
         }
 
+        // Error view handler
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult Error()
         {

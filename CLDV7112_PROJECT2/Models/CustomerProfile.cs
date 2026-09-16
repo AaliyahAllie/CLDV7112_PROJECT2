@@ -1,41 +1,44 @@
+using System;
 using Azure;
 using Azure.Data.Tables;
-using System;
-using System.ComponentModel.DataAnnotations;
 
 namespace CLDV7112_PROJECT2.Models
 {
+    /// <summary>
+    /// Represents a customer account stored in Azure Table Storage.
+    /// Implements ITableEntity for direct integration with Azure Tables.
+    /// </summary>
     public class CustomerProfile : ITableEntity
     {
-        // ITableEntity required properties
-        public string PartitionKey { get; set; } = "Customer";
+        // PartitionKey is set to 'Customers' to group user entities together
+        public string PartitionKey { get; set; } = "Customers";
 
-        [Required]
-        public string RowKey { get; set; } // CustomerId
+        // Unique RowKey (Customer ID)
+        public string RowKey { get; set; } = Guid.NewGuid().ToString("N");
 
+        // Azure Table required timestamp and ETag tracking properties
         public DateTimeOffset? Timestamp { get; set; }
         public ETag ETag { get; set; }
 
-        // Custom profile properties
-        [Required]
-        [Display(Name = "First Name")]
-        public string FirstName { get; set; }
+        // Customer's first name
+        public string FirstName { get; set; } = string.Empty;
 
-        [Required]
-        [Display(Name = "Last Name")]
-        public string LastName { get; set; }
+        // Customer's last name
+        public string LastName { get; set; } = string.Empty;
 
-        [Required]
-        [EmailAddress]
-        public string Email { get; set; }
+        // Email address used for login and order notifications
+        public string Email { get; set; } = string.Empty;
 
-        [Required]
-        [Phone]
-        [Display(Name = "Phone Number")]
-        public string PhoneNumber { get; set; }
+        // Contact phone number
+        public string PhoneNumber { get; set; } = string.Empty;
 
-        [Required]
-        [DataType(DataType.Password)]
-        public string Password { get; set; }
+        // Password hash / secret for authentication
+        public string Password { get; set; } = string.Empty;
+
+        // Account registration date
+        public DateTime DateRegistered { get; set; } = DateTime.UtcNow;
+
+        // Helper property returning full formatted name
+        public string FullName => $"{FirstName} {LastName}".Trim();
     }
 }

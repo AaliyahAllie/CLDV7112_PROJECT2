@@ -3,9 +3,13 @@ using System.Threading.Tasks;
 
 namespace CLDV7112_PROJECT2.Services
 {
+    /// <summary>
+    /// Service managing Stripe PaymentIntent creation and payment verification.
+    /// Integrates Stripe payment gateway with ASP.NET Core web storefront.
+    /// </summary>
     public class StripePaymentService
     {
-        // Creates a PaymentIntent and returns the client_secret for the browser
+        // Creates a PaymentIntent and returns client_secret for browser payment processing
         public async Task<PaymentIntent> CreatePaymentIntentAsync(long amountInCents, string currency = "zar")
         {
             var options = new PaymentIntentCreateOptions
@@ -21,7 +25,7 @@ namespace CLDV7112_PROJECT2.Services
             return await service.CreateAsync(options);
         }
 
-        // Retrieves a PaymentIntent so the server can verify the payment succeeded
+        // Retrieves a PaymentIntent to verify successful card payment confirmation
         public async Task<PaymentIntent> GetPaymentIntentAsync(string paymentIntentId)
         {
             var service = new PaymentIntentService();

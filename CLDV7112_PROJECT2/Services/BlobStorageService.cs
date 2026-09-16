@@ -1,48 +1,48 @@
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
+using System;
 using System.IO;
 using System.Threading.Tasks;
 
 namespace CLDV7112_PROJECT2.Services
 {
+    /// <summary>
+    /// Service managing direct connection to Azure Blob Storage ('product-images' container).
+    /// Used for uploading and deleting product photos and media assets.
+    /// </summary>
     public class BlobStorageService
     {
         private readonly BlobServiceClient _blobServiceClient;
-        private readonly BlobContainerClient _containerClient;
+        private readonly string _containerName = "product-images";
 
         public BlobStorageService(string connectionString)
         {
             _blobServiceClient = new BlobServiceClient(connectionString);
-            _containerClient = _blobServiceClient.GetBlobContainerClient("product-images");
-
-            // Create container and set access level to public so images can be displayed
-            _containerClient.CreateIfNotExists(PublicAccessType.Blob);
         }
 
-        public async Task<string> UploadBlobAsync(string fileName, Stream fileStream)
+        // Helper method returning container client with public access enabled
+        private async Task<BlobContainerClient> GetContainerClientAsync()
         {
-            var blobClient = _containerClient.GetBlobClient(fileName);
-            await blobClient.UploadAsync(fileStream, new BlobHttpHeaders { ContentType = GetContentType(fileName) });
+            var containerClient = _blobServiceClient.GetBlobContainerClient(_containerName);
+            await containerClient.CreateIfNotExistsAsync(PublicAccessType.Blob);
+            return containerClient;
+        }
+
+        // Uploads a stream file to Azure Blob Storage and returns the public URL
+        public async Task<string> UploadBlobAsync(string blobName, Stream content)
+        {
+            var containerClient = await GetContainerClientAsync();
+            var blobClient = containerClient.GetBlobClient(blobName);
+            await blobClient.UploadAsync(content, overwrite: true);
             return blobClient.Uri.ToString();
         }
 
-        public async Task DeleteBlobAsync(string fileName)
+        // Deletes a blob from Azure Blob Storage container
+        public async Task DeleteBlobAsync(string blobName)
         {
-            var blobClient = _containerClient.GetBlobClient(fileName);
+            var containerClient = await GetContainerClientAsync();
+            var blobClient = containerClient.GetBlobClient(blobName);
             await blobClient.DeleteIfExistsAsync();
-        }
-
-        private string GetContentType(string fileName)
-        {
-            var ext = Path.GetExtension(fileName).ToLowerInvariant();
-            return ext switch
-            {
-                ".jpg" or ".jpeg" => "image/jpeg",
-                ".png" => "image/png",
-                ".gif" => "image/gif",
-                ".webp" => "image/webp",
-                _ => "application/octet-stream",
-            };
         }
     }
 }
